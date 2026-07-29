@@ -35,19 +35,21 @@ mermaid.initialize({
   var chartTimeline = echarts.init(document.getElementById('chart-timeline'), null, { renderer: 'svg' });
 
   var phases = [
-    { name: 'P1 基础架构', start: 1, end: 4, color: accent },
-    { name: 'P2 核心玩法', start: 5, end: 9, color: accent },
-    { name: 'P3 市场仿真', start: 10, end: 14, color: accent2 },
-    { name: 'P4 并行优化与打磨', start: 15, end: 19, color: yellow },
-    { name: 'P5 测试与发布', start: 20, end: 22, color: green }
+    { name: 'P1 交易所核心', start: 1, end: 4, color: accent },
+    { name: 'P2 交易终端', start: 5, end: 9, color: accent },
+    { name: 'P3 仿真市场', start: 10, end: 14, color: accent2 },
+    { name: 'P4 信息生态', start: 15, end: 18, color: yellow },
+    { name: 'P5 性能工程', start: 19, end: 21, color: yellow },
+    { name: 'P6 测试与发布', start: 22, end: 24, color: green }
   ];
 
   var milestones = [
-    { name: 'K线实时更新', week: 4, phase: 'P1' },
-    { name: '最小可玩闭环', week: 9, phase: 'P2' },
-    { name: '市场仿真上线', week: 14, phase: 'P3' },
-    { name: '1000代理流畅运行', week: 19, phase: 'P4' },
-    { name: '可发布版本', week: 22, phase: 'P5' }
+    { name: '撮合引擎可运行', week: 4, phase: 'P1' },
+    { name: '双模式交易闭环', week: 9, phase: 'P2' },
+    { name: '多标的市场上线', week: 14, phase: 'P3' },
+    { name: '论坛新闻闭环', week: 18, phase: 'P4' },
+    { name: '300标的流畅运行', week: 21, phase: 'P5' },
+    { name: '可发布版本', week: 24, phase: 'P6' }
   ];
 
   chartTimeline.setOption({
@@ -62,7 +64,7 @@ mermaid.initialize({
     xAxis: {
       type: 'value',
       min: 0,
-      max: 23,
+      max: 25,
       interval: 2,
       axisLine: { lineStyle: { color: rule } },
       axisLabel: {
