@@ -1,0 +1,3437 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>证券交易市场模拟器 · Demo</title>
+<style>
+/* ========== Reset & Base ========== */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; }
+body {
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+  background: #0d1117;
+  color: #e6edf3;
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+.mono { font-family: 'SF Mono', 'Consolas', 'Monaco', monospace; }
+
+/* ========== Colors ========== */
+:root {
+  --bg: #0d1117;
+  --bg2: #161b22;
+  --bg3: #21262d;
+  --bg4: #2d333b;
+  --ink: #e6edf3;
+  --muted: #8b949e;
+  --dim: #6e7681;
+  --rule: #30363d;
+  --accent: #58a6ff;
+  --red: #f85149;
+  --green: #3fb950;
+  --yellow: #d29922;
+  --orange: #db6d28;
+}
+
+/* ========== Layout ========== */
+#app {
+  display: grid;
+  grid-template-rows: 44px 1fr 220px;
+  height: 100vh;
+}
+
+/* ========== Top Bar ========== */
+.topbar {
+  display: flex;
+  align-items: center;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--rule);
+  padding: 0 16px;
+  gap: 16px;
+  height: 44px;
+}
+.topbar .logo {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.topbar .logo span { color: var(--muted); font-weight: 400; font-size: 11px; margin-left: 6px; }
+.topbar .divider { width: 1px; height: 24px; background: var(--rule); }
+.topbar .instrument-select {
+  background: var(--bg3);
+  border: 1px solid var(--rule);
+  color: var(--ink);
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+}
+.topbar .price-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.topbar .price-display .price {
+  font-size: 18px;
+  font-weight: 700;
+  font-family: 'SF Mono', monospace;
+}
+.topbar .price-display .change {
+  font-size: 12px;
+  font-family: 'SF Mono', monospace;
+}
+.topbar .spacer { flex: 1; }
+.topbar .kpi-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg3);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+.topbar .kpi-badge .label { color: var(--muted); }
+.topbar .kpi-badge .value { font-family: 'SF Mono', monospace; font-weight: 600; }
+.topbar .kpi-badge .status {
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+}
+.topbar .kpi-badge .status.ok { background: rgba(63,185,80,0.15); color: var(--green); }
+.topbar .kpi-badge .status.warn { background: rgba(210,153,34,0.15); color: var(--yellow); }
+.topbar .kpi-badge .status.danger { background: rgba(248,81,73,0.15); color: var(--red); }
+.topbar .clock {
+  font-family: 'SF Mono', monospace;
+  color: var(--muted);
+  font-size: 12px;
+}
+.topbar .speed-ctrl {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.topbar .speed-ctrl button {
+  background: var(--bg3);
+  border: 1px solid var(--rule);
+  color: var(--muted);
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: 'SF Mono', monospace;
+}
+.topbar .speed-ctrl button.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.topbar .acct-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.topbar .acct-bar .ab-item { display: flex; align-items: center; gap: 3px; }
+.topbar .acct-bar .ab-l { font-size: 10px; color: var(--muted); white-space: nowrap; }
+.topbar .acct-bar .ab-v { font-size: 11px; font-family: 'SF Mono', monospace; color: var(--ink); font-weight: 600; white-space: nowrap; }
+
+/* ========== Main Area ========== */
+.main {
+  display: grid;
+  grid-template-columns: 52px 1fr 320px;
+  overflow: hidden;
+}
+
+/* ========== Left Toolbar ========== */
+.toolbar {
+  background: var(--bg2);
+  border-right: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0;
+  gap: 4px;
+}
+.toolbar .tool-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--muted);
+  transition: all 0.15s;
+  border: 1px solid transparent;
+  position: relative;
+}
+.toolbar .tool-btn:hover { background: var(--bg3); color: var(--ink); }
+.toolbar .tool-btn.active {
+  background: rgba(88,166,255,0.12);
+  color: var(--accent);
+  border-color: rgba(88,166,255,0.3);
+}
+.toolbar .tool-btn svg { width: 20px; height: 20px; }
+.toolbar .tool-btn .tooltip {
+  position: absolute;
+  left: 48px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--bg4);
+  color: var(--ink);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  z-index: 100;
+}
+.toolbar .tool-btn:hover .tooltip { opacity: 1; }
+.toolbar .tool-sep { width: 28px; height: 1px; background: var(--rule); margin: 4px 0; }
+
+/* ========== Chart Area ========== */
+.chart-area {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  overflow: hidden;
+}
+.chart-header {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--rule);
+  gap: 12px;
+  height: 36px;
+}
+.chart-header .tf-group { display: flex; gap: 2px; }
+.chart-header .tf-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: 'SF Mono', monospace;
+}
+.chart-header .tf-btn.active { background: var(--bg3); color: var(--accent); }
+.chart-header .chart-info {
+  display: flex;
+  gap: 16px;
+  font-size: 11px;
+  font-family: 'SF Mono', monospace;
+}
+.chart-header .chart-info .ci-label { color: var(--dim); }
+.chart-header .chart-info .ci-value { color: var(--ink); }
+.chart-header .spacer { flex: 1; }
+.chart-header .draw-hint {
+  font-size: 11px;
+  color: var(--yellow);
+  display: none;
+}
+.chart-header .draw-hint.visible { display: block; }
+
+.chart-canvas-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+#klineCanvas {
+  display: block;
+  cursor: crosshair;
+}
+#klineCanvas.trade-mode { cursor: default; }
+
+/* ========== Right Panel ========== */
+.right-panel {
+  background: var(--bg2);
+  border-left: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.right-panel .rp-section {
+  border-bottom: 1px solid var(--rule);
+}
+.right-panel .rp-title {
+  padding: 6px 12px;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: var(--bg3);
+  font-weight: 600;
+}
+
+/* Order Book */
+.orderbook {
+  height: 220px;
+  overflow-y: auto;
+  font-family: 'SF Mono', monospace;
+  font-size: 11px;
+}
+.orderbook .ob-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  padding: 1px 12px;
+  position: relative;
+  height: 18px;
+  align-items: center;
+}
+.orderbook .ob-row.ask .ob-price { color: var(--green); }
+.orderbook .ob-row.bid .ob-price { color: var(--red); }
+.orderbook .ob-row .ob-bar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  opacity: 0.08;
+}
+.orderbook .ob-row.ask .ob-bar { background: var(--green); }
+.orderbook .ob-row.bid .ob-bar { background: var(--red); }
+.orderbook .ob-row .ob-price { z-index: 1; }
+.orderbook .ob-row .ob-size { z-index: 1; text-align: right; color: var(--muted); }
+.orderbook .ob-row .ob-total { z-index: 1; text-align: right; color: var(--dim); }
+.orderbook .ob-spread {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 4px;
+  background: var(--bg3);
+  font-size: 11px;
+  gap: 8px;
+}
+.orderbook .ob-spread .last-price { font-weight: 700; font-size: 14px; }
+.orderbook .ob-spread .spread-val { color: var(--dim); }
+
+/* Order Entry */
+.order-entry {
+  padding: 10px 12px;
+}
+.order-entry .oe-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 10px;
+}
+.order-entry .oe-tab {
+  flex: 1;
+  padding: 5px;
+  text-align: center;
+  font-size: 12px;
+  cursor: pointer;
+  border: 1px solid var(--rule);
+  border-radius: 4px 0 0 4px;
+  color: var(--muted);
+}
+.order-entry .oe-tab:last-child { border-radius: 0 4px 4px 0; border-left: none; }
+.order-entry .oe-tab.active-buy {
+  background: rgba(248,81,73,0.15);
+  color: var(--red);
+  border-color: var(--red);
+}
+.order-entry .oe-tab.active-sell {
+  background: rgba(63,185,80,0.15);
+  color: var(--green);
+  border-color: var(--green);
+}
+.order-entry .oe-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+.order-entry .oe-label {
+  width: 40px;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: right;
+}
+.order-entry .oe-input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--rule);
+  color: var(--ink);
+  padding: 5px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-family: 'SF Mono', monospace;
+  outline: none;
+}
+.order-entry .oe-input:focus { border-color: var(--accent); }
+.order-entry .oe-input::placeholder { color: var(--dim); }
+.order-entry .oe-unit {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.order-entry .oe-quick-qty {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.order-entry .oq-btn {
+  flex: 1;
+  background: var(--bg3);
+  border: 1px solid var(--rule);
+  color: var(--muted);
+  padding: 3px 0;
+  border-radius: 3px;
+  font-size: 10px;
+  cursor: pointer;
+  font-family: 'SF Mono', monospace;
+}
+.order-entry .oq-btn:hover { color: var(--ink); border-color: var(--accent); }
+.order-entry .oe-btn {
+  width: 100%;
+  padding: 8px;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #fff;
+  margin-top: 4px;
+}
+.order-entry .oe-btn.buy { background: var(--red); }
+.order-entry .oe-btn.buy:hover { background: #ff5d56; }
+.order-entry .oe-btn.sell { background: var(--green); }
+.order-entry .oe-btn.sell:hover { background: #46c75d; }
+.order-entry .oe-avail {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+}
+.order-entry .oe-avail .val { font-family: 'SF Mono', monospace; color: var(--ink); }
+
+/* Account Summary */
+.acct-summary {
+  padding: 10px 12px;
+}
+.acct-summary .as-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 5px;
+}
+.acct-summary .as-label { color: var(--muted); }
+.acct-summary .as-value { font-family: 'SF Mono', monospace; }
+
+/* ========== Bottom Panel ========== */
+.bottom-panel {
+  background: var(--bg2);
+  border-top: 1px solid var(--rule);
+  display: flex;
+  overflow: hidden;
+}
+.bp-tabs {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--rule);
+  background: var(--bg3);
+  min-width: 80px;
+}
+.bp-tab {
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 1px solid var(--rule);
+  text-align: center;
+  white-space: nowrap;
+}
+.bp-tab:hover { color: var(--ink); }
+.bp-tab.active {
+  background: var(--bg2);
+  color: var(--accent);
+  border-left: 2px solid var(--accent);
+}
+.bp-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.bp-pane {
+  flex: 1;
+  overflow-y: auto;
+  display: none;
+}
+.bp-pane.active { display: block; }
+
+/* Positions Table */
+.positions-table {
+  width: 100%;
+  font-size: 12px;
+  font-family: 'SF Mono', monospace;
+}
+.positions-table th {
+  background: var(--bg3);
+  color: var(--muted);
+  font-weight: 500;
+  padding: 6px 12px;
+  text-align: left;
+  font-size: 11px;
+  position: sticky;
+  top: 0;
+  border-bottom: 1px solid var(--rule);
+}
+.positions-table td {
+  padding: 5px 12px;
+  border-bottom: 1px solid rgba(48,54,61,0.5);
+}
+.positions-table .pos-profit { color: var(--red); }
+.positions-table .pos-loss { color: var(--green); }
+
+/* Orders Table */
+.orders-table {
+  width: 100%;
+  font-size: 12px;
+  font-family: 'SF Mono', monospace;
+}
+.orders-table th {
+  background: var(--bg3);
+  color: var(--muted);
+  font-weight: 500;
+  padding: 6px 12px;
+  text-align: left;
+  font-size: 11px;
+  position: sticky;
+  top: 0;
+  border-bottom: 1px solid var(--rule);
+}
+.orders-table td {
+  padding: 5px 12px;
+  border-bottom: 1px solid rgba(48,54,61,0.5);
+}
+.orders-table .ord-status-filled { color: var(--muted); }
+.orders-table .ord-status-pending { color: var(--yellow); }
+.orders-table .ord-status-cancelled { color: var(--dim); text-decoration: line-through; }
+.orders-table .cancel-btn {
+  background: transparent;
+  border: 1px solid var(--rule);
+  color: var(--muted);
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  cursor: pointer;
+}
+.orders-table .cancel-btn:hover { color: var(--red); border-color: var(--red); }
+
+/* Forum */
+.forum-list {
+  padding: 8px 0;
+}
+.forum-post {
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(48,54,61,0.4);
+}
+.forum-post .fp-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.forum-post .fp-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+}
+.forum-post .fp-author {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.forum-post .fp-time {
+  font-size: 10px;
+  color: var(--dim);
+  font-family: 'SF Mono', monospace;
+}
+.forum-post .fp-content {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.forum-post .fp-sentiment {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-left: auto;
+}
+.forum-post .fp-sentiment.bullish { background: rgba(248,81,73,0.15); color: var(--red); }
+.forum-post .fp-sentiment.bearish { background: rgba(63,185,80,0.15); color: var(--green); }
+.forum-post .fp-sentiment.neutral { background: rgba(139,148,158,0.15); color: var(--muted); }
+
+/* News */
+.news-list {
+  padding: 8px 0;
+}
+.news-item {
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(48,54,61,0.4);
+  display: flex;
+  gap: 12px;
+}
+.news-item .news-time {
+  font-size: 10px;
+  color: var(--dim);
+  font-family: 'SF Mono', monospace;
+  white-space: nowrap;
+  min-width: 50px;
+}
+.news-item .news-content {
+  font-size: 12px;
+  color: var(--ink);
+  line-height: 1.5;
+}
+.news-item .news-content .news-tag {
+  display: inline-block;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-right: 6px;
+  font-weight: 600;
+}
+.news-item .news-tag.hot { background: rgba(248,81,73,0.15); color: var(--red); }
+.news-item .news-tag.info { background: rgba(88,166,255,0.15); color: var(--accent); }
+.news-item .news-tag.warn { background: rgba(210,153,34,0.15); color: var(--yellow); }
+
+/* KPI Detail */
+.kpi-detail {
+  padding: 12px 16px;
+}
+.kpi-detail .kpi-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(48,54,61,0.4);
+}
+.kpi-detail .kpi-label { font-size: 12px; color: var(--muted); }
+.kpi-detail .kpi-value { font-size: 14px; font-family: 'SF Mono', monospace; font-weight: 600; }
+.kpi-detail .kpi-progress {
+  margin-top: 12px;
+  height: 8px;
+  background: var(--bg3);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+.kpi-detail .kpi-progress-bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease, background 0.5s ease;
+}
+.kpi-detail .kpi-target-line {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: var(--yellow);
+}
+.kpi-detail .kpi-desc {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--dim);
+  line-height: 1.5;
+}
+
+/* Ammunition Bar */
+.ammo-bar {
+  padding: 8px 12px;
+  border-top: 1px solid var(--rule);
+}
+.ammo-bar .ab-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+.ammo-bar .ab-header .ab-label { color: var(--muted); }
+.ammo-bar .ab-header .ab-value { font-family: 'SF Mono', monospace; color: var(--accent); }
+.ammo-bar .ab-track {
+  height: 6px;
+  background: var(--bg);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.ammo-bar .ab-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #79b8ff);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--dim); }
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 240px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg4);
+  color: var(--ink);
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 13px;
+  border: 1px solid var(--rule);
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; }
+.toast.success { border-color: var(--green); }
+.toast.error { border-color: var(--red); }
+.toast.warn { border-color: var(--yellow); }
+
+/* Next Day Button (toolbar) */
+.tool-next-day {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  min-height: 44px;
+  padding: 4px 2px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--accent);
+  border: 1px solid rgba(88,166,255,0.4);
+  background: rgba(88,166,255,0.08);
+  transition: all 0.15s;
+  gap: 2px;
+}
+.tool-next-day.show { display: flex; }
+.tool-next-day:hover { background: rgba(88,166,255,0.2); }
+.tool-next-day svg { width: 18px; height: 18px; }
+.tool-next-day .tnd-label { font-size: 9px; font-weight: 600; }
+.tool-next-day .tnd-summary {
+  font-size: 8px;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.2;
+  font-family: 'SF Mono', monospace;
+  max-width: 44px;
+  word-break: break-all;
+}
+
+/* Right panel toggle */
+.rp-toggle {
+  display: flex;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--rule);
+}
+.rp-toggle-btn {
+  flex: 1;
+  padding: 5px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.rp-toggle-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* Chip distribution */
+.chip-dist {
+  height: 220px;
+  overflow-y: auto;
+  font-family: 'SF Mono', monospace;
+  font-size: 10px;
+  padding: 4px 0;
+}
+.chip-dist .cd-row {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  height: 14px;
+  position: relative;
+  gap: 4px;
+}
+.chip-dist .cd-price { width: 40px; color: var(--muted); text-align: right; flex-shrink: 0; }
+.chip-dist .cd-bar-wrap { flex: 1; height: 8px; position: relative; }
+.chip-dist .cd-bar { height: 100%; border-radius: 2px; }
+.chip-dist .cd-bar.profit { background: rgba(248,81,73,0.4); }
+.chip-dist .cd-bar.loss { background: rgba(63,185,80,0.4); }
+.chip-dist .cd-qty { width: 50px; color: var(--dim); text-align: right; flex-shrink: 0; }
+.chip-dist .cd-current-marker {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 1px dashed var(--accent);
+}
+.chip-dist .cd-current-label {
+  position: absolute;
+  right: 4px;
+  top: -12px;
+  font-size: 9px;
+  color: var(--accent);
+  background: var(--bg2);
+  padding: 0 4px;
+}
+
+/* Trade markers on chart */
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- ========== Top Bar ========== -->
+  <div class="topbar">
+    <div class="logo">TradingSim <span>v0.1 Demo</span></div>
+    <div class="divider"></div>
+    <select class="instrument-select" id="instrumentSelect">
+      <option value="TECH100">科技100 · 100038</option>
+      <option value="BLUECHIP">蓝筹50 · 100055</option>
+      <option value="GROWTH">成长30 · 100088</option>
+    </select>
+    <div class="price-display">
+      <span class="price" id="topPrice">10.00</span>
+      <span class="change" id="topChange">+0.00 (+0.00%)</span>
+    </div>
+    <div class="divider"></div>
+    <div class="acct-bar">
+      <span class="ab-item"><span class="ab-l">总资产</span> <span class="ab-v" id="topTotalAssets">10,000,000</span></span>
+      <span class="ab-item"><span class="ab-l">持仓</span> <span class="ab-v" id="topPosValue">0</span></span>
+      <span class="ab-item"><span class="ab-l">可用</span> <span class="ab-v" id="topAvailCash">10,000,000</span></span>
+    </div>
+    <div class="spacer"></div>
+    <div class="speed-ctrl">
+      <button data-speed="2000">1x</button>
+      <button data-speed="1000" class="active">2x</button>
+      <button data-speed="500">4x</button>
+      <button data-speed="200">10x</button>
+    </div>
+    <div class="divider"></div>
+    <div class="kpi-badge">
+      <span class="label">KPI</span>
+      <span class="value" id="kpiReturn">+0.00%</span>
+      <span class="status ok" id="kpiStatus">安全</span>
+    </div>
+    <div class="divider"></div>
+    <div class="clock" id="clock">09:30:00</div>
+  </div>
+
+  <!-- ========== Main Area ========== -->
+  <div class="main">
+    <!-- Left Toolbar -->
+    <div class="toolbar">
+      <div class="tool-btn active" data-mode="draw" id="toolDraw">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7l7 0 0 7"/></svg>
+        <span class="tooltip">自动滚动（跟踪最新K线）</span>
+      </div>
+      <div class="tool-btn" data-mode="trade" id="toolTrade">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 6-6"/></svg>
+        <span class="tooltip">手动浏览（左键拖动平移）</span>
+      </div>
+      <div class="tool-sep"></div>
+      <div class="tool-btn" id="toolClearDraw">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+        <span class="tooltip">清除绘制</span>
+      </div>
+      <div class="tool-btn" id="toolPause">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+        <span class="tooltip">暂停/继续</span>
+      </div>
+      <div class="tool-sep"></div>
+      <div class="tool-btn" id="toolReset">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+        <span class="tooltip">重置模拟</span>
+      </div>
+      <div class="tool-sep"></div>
+      <div class="tool-next-day" id="toolNextDay">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        <span class="tnd-label">次日</span>
+        <span class="tnd-summary" id="ndSummary"></span>
+      </div>
+    </div>
+
+    <!-- Chart Area -->
+    <div class="chart-area">
+      <div class="chart-header">
+        <div class="tf-group">
+          <button class="tf-btn active" data-tf="5">分时</button>
+          <button class="tf-btn" data-tf="day">日K</button>
+          <button class="tf-btn" data-tf="week">周K</button>
+          <button class="tf-btn" data-tf="month">月K</button>
+        </div>
+        <div class="chart-info" id="chartInfo">
+          <span><span class="ci-label">开</span> <span class="ci-value" id="ciOpen">10.00</span></span>
+          <span><span class="ci-label">高</span> <span class="ci-value" id="ciHigh">10.00</span></span>
+          <span><span class="ci-label">低</span> <span class="ci-value" id="ciLow">10.00</span></span>
+          <span><span class="ci-label">收</span> <span class="ci-value" id="ciClose">10.00</span></span>
+          <span><span class="ci-label">量</span> <span class="ci-value" id="ciVol">0</span></span>
+        </div>
+        <div class="spacer"></div>
+        <div class="draw-hint visible" id="drawHint">左键拖动平移 | 右键绘制K线 | 滚轮缩放</div>
+      </div>
+      <div class="chart-canvas-wrap" style="position:relative;">
+        <canvas id="klineCanvas"></canvas>
+      </div>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="right-panel">
+      <div class="rp-toggle">
+        <div class="rp-toggle-btn active" data-rp="orderbook">五档行情</div>
+        <div class="rp-toggle-btn" data-rp="chipdist">筹码分布</div>
+      </div>
+      <div class="rp-section" id="rpOrderBook">
+        <div class="orderbook" id="orderBook"></div>
+      </div>
+      <div class="rp-section" id="rpChipDist" style="display:none;">
+        <div class="chip-dist" id="chipDist"></div>
+      </div>
+      <div class="rp-section">
+        <div class="rp-title">委托下单</div>
+        <div class="order-entry">
+          <div class="oe-tabs">
+            <div class="oe-tab active-buy" id="tabBuy">买入</div>
+            <div class="oe-tab" id="tabSell">卖出</div>
+          </div>
+          <div class="oe-row">
+            <span class="oe-label">价格</span>
+            <input class="oe-input mono" id="orderPrice" type="number" step="0.01" placeholder="限价" value="10.00">
+          </div>
+          <div class="oe-row">
+            <span class="oe-label">数量</span>
+            <input class="oe-input mono" id="orderQty" type="number" step="100" placeholder="股" value="100">
+            <span class="oe-unit">股</span>
+          </div>
+          <div class="oe-quick-qty">
+            <button class="oq-btn" data-qty="100">100</button>
+            <button class="oq-btn" data-qty="500">500</button>
+            <button class="oq-btn" data-qty="1000">1000</button>
+            <button class="oq-btn" data-qty="5000">5000</button>
+          </div>
+          <button class="oe-btn buy" id="btnPlaceOrder">买入下单</button>
+          <div class="oe-avail">
+            <span id="availLabel">可用资金</span>
+            <span class="val" id="availCash">10,000,000</span>
+          </div>
+          <div class="oe-avail">
+            <span>可用持仓</span>
+            <span class="val" id="availShares">0</span>
+          </div>
+        </div>
+      </div>
+      <div class="rp-section" style="flex:1; overflow-y:auto;">
+        <div class="rp-title">账户概览</div>
+        <div class="acct-summary">
+          <div class="as-row"><span class="as-label">总资产</span><span class="as-value" id="acctTotal">10,000,000</span></div>
+          <div class="as-row"><span class="as-label">现金</span><span class="as-value" id="acctCash">10,000,000</span></div>
+          <div class="as-row"><span class="as-label">持仓市值</span><span class="as-value" id="acctPosValue">0</span></div>
+          <div class="as-row"><span class="as-label">浮动盈亏</span><span class="as-value" id="acctFloatPnl">0.00</span></div>
+          <div class="as-row"><span class="as-label">已实现盈亏</span><span class="as-value" id="acctRealizedPnl">0.00</span></div>
+          <div class="as-row"><span class="as-label">总盈亏</span><span class="as-value" id="acctTotalPnl">0.00</span></div>
+          <div class="as-row"><span class="as-label">收益率</span><span class="as-value" id="acctReturn">0.00%</span></div>
+        </div>
+      </div>
+      <div class="ammo-bar">
+        <div class="ab-header">
+          <span class="ab-label">主力可用筹码</span>
+          <span class="ab-value" id="ammoValue">1,000,000 / 1,000,000</span>
+        </div>
+        <div class="ab-track"><div class="ab-fill" id="ammoFill" style="width:100%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== Bottom Panel ========== -->
+  <div class="bottom-panel">
+    <div class="bp-tabs">
+      <div class="bp-tab active" data-pane="positions">持仓</div>
+      <div class="bp-tab" data-pane="orders">委托</div>
+      <div class="bp-tab" data-pane="forum">论坛</div>
+      <div class="bp-tab" data-pane="news">新闻</div>
+      <div class="bp-tab" data-pane="kpi">KPI</div>
+    </div>
+    <div class="bp-content">
+      <div class="bp-pane active" id="pane-positions">
+        <table class="positions-table">
+          <thead><tr><th>标的</th><th>方向</th><th>持仓</th><th>可用</th><th>冻结</th><th>成本</th><th>现价</th><th>浮盈</th><th>盈亏%</th></tr></thead>
+          <tbody id="positionsBody"></tbody>
+        </table>
+      </div>
+      <div class="bp-pane" id="pane-orders">
+        <table class="orders-table">
+          <thead><tr><th>时间</th><th>标的</th><th>方向</th><th>价格</th><th>数量</th><th>已成交</th><th>状态</th><th>操作</th></tr></thead>
+          <tbody id="ordersBody"></tbody>
+        </table>
+      </div>
+      <div class="bp-pane" id="pane-forum">
+        <div class="forum-list" id="forumList"></div>
+      </div>
+      <div class="bp-pane" id="pane-news">
+        <div class="news-list" id="newsList"></div>
+      </div>
+      <div class="bp-pane" id="pane-kpi">
+        <div class="kpi-detail" id="kpiDetail"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+//  Configuration
+// ============================================================
+const CONFIG = {
+  initialCash: 10000000,       // 初始资金 1000万
+  initialAmmo: 1000000,        // 初始主力筹码 100万股
+  basePrice: 10.00,            // 基准价格
+  priceTick: 0.01,             // 最小变动价位
+  lotSize: 100,                // 1手 = 100股
+  kpiTarget: 0.15,             // KPI目标: 年化15%
+  tradingHours: 240,           // 交易时间 240分钟 (09:30-11:30, 13:00-15:00)
+  marketOpen: '09:30:00',
+  marketClose: '15:00:00',
+  tickInterval: 1000,          // 默认模拟间隔
+  maxCandles: 120,             // 图表最大K线数
+  retailAgentCount: 50,        // 散户数量
+  retailOrderRate: 0.6,        // 散户下单概率
+  maxPriceChange: 0.10,       // 单日最大涨跌幅10%
+};
+
+const INSTRUMENTS = {
+  TECH100: { code: '100038', name: '科技100', basePrice: 10.00, volatility: 0.015 },
+  BLUECHIP: { code: '100055', name: '蓝筹50', basePrice: 50.00, volatility: 0.008 },
+  GROWTH: { code: '100088', name: '成长30', basePrice: 25.00, volatility: 0.022 },
+};
+
+// ============================================================
+//  Utility
+// ============================================================
+function fmt(n, dec = 2) {
+  if (n === undefined || n === null || isNaN(n)) return '--';
+  return Number(n).toLocaleString('zh-CN', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+}
+function fmtInt(n) {
+  if (n === undefined || n === null || isNaN(n)) return '--';
+  return Math.round(n).toLocaleString('zh-CN');
+}
+function fmtPct(n) {
+  if (n === undefined || n === null || isNaN(n)) return '0.00%';
+  return (n >= 0 ? '+' : '') + (n * 100).toFixed(2) + '%';
+}
+function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+function randn() {
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+function roundPrice(p) { return Math.round(p / CONFIG.priceTick) * CONFIG.priceTick; }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 5); }
+
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.className = 'toast'; }, 2500);
+}
+
+// ============================================================
+//  Order Book (Limit Order Book with Price-Time Priority)
+// ============================================================
+class OrderBook {
+  constructor(symbol) {
+    this.symbol = symbol;
+    this.bids = new Map();  // price -> [{qty, ts, id}]
+    this.asks = new Map();
+    this.lastPrice = 0;
+    this.tradeHistory = [];
+    this.orderIdCounter = 0;
+    this.limitUp = 0;    // 涨停价
+    this.limitDown = 0;  // 跌停价
+    this.isLimitUp = false;   // 是否涨停封板
+    this.isLimitDown = false; // 是否跌停封板
+  }
+
+  // Set daily price limits based on previous close
+  setPriceLimits(prevClose) {
+    this.limitUp = roundPrice(prevClose * (1 + CONFIG.maxPriceChange));
+    this.limitDown = roundPrice(prevClose * (1 - CONFIG.maxPriceChange));
+    this.isLimitUp = false;
+    this.isLimitDown = false;
+  }
+
+  // Clamp order price to daily limits
+  clampPrice(price) {
+    if (this.limitUp > 0) price = Math.min(price, this.limitUp);
+    if (this.limitDown > 0) price = Math.max(price, this.limitDown);
+    return roundPrice(price);
+  }
+
+  // Add a limit order, returns fills
+  addLimitOrder(side, price, qty, owner = 'agent') {
+    // Enforce daily price limits
+    if (this.limitUp > 0 && price > this.limitUp) price = this.limitUp;
+    if (this.limitDown > 0 && price < this.limitDown) price = this.limitDown;
+    price = roundPrice(price);
+
+    // If sealed at limit up, block new sell orders above limit (only allows sells at limit)
+    // If sealed at limit down, block new buy orders below limit (only allows buys at limit)
+    if (this.isLimitUp && side === 'sell' && price > this.limitUp) {
+      return { fills: [], remaining: qty, orderId: ++this.orderIdCounter };
+    }
+    if (this.isLimitDown && side === 'buy' && price < this.limitDown) {
+      return { fills: [], remaining: qty, orderId: ++this.orderIdCounter };
+    }
+
+    const id = ++this.orderIdCounter;
+    const ts = Date.now();
+    let remaining = qty;
+    const fills = [];
+
+    // Try to match immediately
+    if (side === 'buy') {
+      // Match against asks (lowest first)
+      const askPrices = [...this.asks.keys()].sort((a, b) => a - b);
+      for (const ap of askPrices) {
+        if (ap <= price && remaining > 0) {
+          const level = this.asks.get(ap);
+          while (level.length > 0 && remaining > 0) {
+            const ord = level[0];
+            const fillQty = Math.min(remaining, ord.qty);
+            fills.push({ price: ap, qty: fillQty, side: 'buy' });
+            this.lastPrice = ap;
+            remaining -= fillQty;
+            ord.qty -= fillQty;
+            if (ord.qty <= 0) level.shift();
+          }
+          if (level.length === 0) this.asks.delete(ap);
+        } else break;
+      }
+    } else {
+      // Match against bids (highest first)
+      const bidPrices = [...this.bids.keys()].sort((a, b) => b - a);
+      for (const bp of bidPrices) {
+        if (bp >= price && remaining > 0) {
+          const level = this.bids.get(bp);
+          while (level.length > 0 && remaining > 0) {
+            const ord = level[0];
+            const fillQty = Math.min(remaining, ord.qty);
+            fills.push({ price: bp, qty: fillQty, side: 'sell' });
+            this.lastPrice = bp;
+            remaining -= fillQty;
+            ord.qty -= fillQty;
+            if (ord.qty <= 0) level.shift();
+          }
+          if (level.length === 0) this.bids.delete(bp);
+        } else break;
+      }
+    }
+
+    // Record trades
+    for (const f of fills) {
+      this.tradeHistory.push({ ...f, ts: Date.now() });
+    }
+
+    // Add remaining to book
+    if (remaining > 0) {
+      const book = side === 'buy' ? this.bids : this.asks;
+      if (!book.has(price)) book.set(price, []);
+      book.get(price).push({ qty: remaining, ts, id, owner });
+    }
+
+    return { fills, remaining, orderId: id };
+  }
+
+  // Market order
+  addMarketOrder(side, qty) {
+    let remaining = qty;
+    const fills = [];
+    const book = side === 'buy' ? this.asks : this.bids;
+    const prices = [...book.keys()].sort((a, b) => side === 'buy' ? a - b : b - a);
+
+    for (const p of prices) {
+      if (remaining <= 0) break;
+      const level = book.get(p);
+      while (level.length > 0 && remaining > 0) {
+        const ord = level[0];
+        const fillQty = Math.min(remaining, ord.qty);
+        fills.push({ price: p, qty: fillQty, side });
+        this.lastPrice = p;
+        remaining -= fillQty;
+        ord.qty -= fillQty;
+        if (ord.qty <= 0) level.shift();
+      }
+      if (level.length === 0) book.delete(p);
+    }
+
+    for (const f of fills) {
+      this.tradeHistory.push({ ...f, ts: Date.now() });
+    }
+
+    return { fills, remaining };
+  }
+
+  cancelOrder(side, orderId) {
+    const book = side === 'buy' ? this.bids : this.asks;
+    for (const [price, level] of book) {
+      const idx = level.findIndex(o => o.id === orderId);
+      if (idx >= 0) {
+        const order = level[idx];
+        level.splice(idx, 1);
+        if (level.length === 0) book.delete(price);
+        return { side, price, qty: order.qty };
+      }
+    }
+    return null;
+  }
+
+  getBestBid() {
+    const prices = [...this.bids.keys()];
+    return prices.length > 0 ? Math.max(...prices) : 0;
+  }
+  getBestAsk() {
+    const prices = [...this.asks.keys()];
+    return prices.length > 0 ? Math.min(...prices) : 0;
+  }
+  getSpread() {
+    return this.getBestAsk() - this.getBestBid();
+  }
+  getMidPrice() {
+    const bb = this.getBestBid();
+    const ba = this.getBestAsk();
+    if (bb > 0 && ba > 0) return (bb + ba) / 2;
+    return this.lastPrice || 0;
+  }
+
+  // Get top N levels
+  getDepth(n = 5) {
+    const bids = [];
+    const asks = [];
+    let totalBid = 0, totalAsk = 0;
+
+    const bidPrices = [...this.bids.keys()].sort((a, b) => b - a).slice(0, n);
+    for (const p of bidPrices) {
+      const level = this.bids.get(p);
+      const qty = level.reduce((s, o) => s + o.qty, 0);
+      totalBid += qty;
+      bids.push({ price: p, qty, total: totalBid });
+    }
+
+    const askPrices = [...this.asks.keys()].sort((a, b) => a - b).slice(0, n);
+    for (const p of askPrices) {
+      const level = this.asks.get(p);
+      const qty = level.reduce((s, o) => s + o.qty, 0);
+      totalAsk += qty;
+      asks.push({ price: p, qty, total: totalAsk });
+    }
+
+    return { bids, asks };
+  }
+
+  // Seed initial liquidity
+  seed(basePrice) {
+    // Thinner book: fewer shares per level, tighter spacing
+    // This allows large orders to move the price more realistically
+    for (let i = 1; i <= 15; i++) {
+      const bidPrice = roundPrice(basePrice - i * CONFIG.priceTick * 2);
+      const askPrice = roundPrice(basePrice + i * CONFIG.priceTick * 2);
+      // Thinner levels: 50-300 lots (5k-30k shares), decreasing with distance
+      const depthFactor = Math.max(0.2, 1 - i * 0.05);
+      const bidQty = Math.floor((50 + Math.random() * 250) * depthFactor) * CONFIG.lotSize;
+      const askQty = Math.floor((50 + Math.random() * 250) * depthFactor) * CONFIG.lotSize;
+      this.bids.set(bidPrice, [{ qty: bidQty, ts: Date.now(), id: ++this.orderIdCounter, owner: 'seed' }]);
+      this.asks.set(askPrice, [{ qty: askQty, ts: Date.now(), id: ++this.orderIdCounter, owner: 'seed' }]);
+    }
+    this.lastPrice = basePrice;
+  }
+
+  // Clear all orders from a specific owner
+  clearOwnerOrders(owner) {
+    for (const [price, level] of this.bids) {
+      this.bids.set(price, level.filter(o => o.owner !== owner));
+      if (this.bids.get(price).length === 0) this.bids.delete(price);
+    }
+    for (const [price, level] of this.asks) {
+      this.asks.set(price, level.filter(o => o.owner !== owner));
+      if (this.asks.get(price).length === 0) this.asks.delete(price);
+    }
+  }
+
+  // Get total qty of orders from a specific owner at a price level
+  getPlayerOrderQty(side, price, owner) {
+    const book = side === 'buy' ? this.bids : this.asks;
+    const level = book.get(roundPrice(price));
+    if (!level) return 0;
+    return level.filter(o => o.owner === owner).reduce((s, o) => s + o.qty, 0);
+  }
+
+  // Cancel all orders from a specific owner at a price level
+  cancelOwnerOrder(side, price, owner) {
+    const book = side === 'buy' ? this.bids : this.asks;
+    const rp = roundPrice(price);
+    const level = book.get(rp);
+    if (!level) return 0;
+    let cancelledQty = 0;
+    const remaining = level.filter(o => {
+      if (o.owner === owner) { cancelledQty += o.qty; return false; }
+      return true;
+    });
+    if (remaining.length === 0) book.delete(rp);
+    else book.set(rp, remaining);
+    return cancelledQty;
+  }
+
+  getTotalVolume() {
+    return this.tradeHistory.reduce((s, t) => s + t.qty, 0);
+  }
+}
+
+// ============================================================
+//  Market Agent (Retail Trader Simulator)
+// ============================================================
+class RetailAgent {
+  constructor(id) {
+    this.id = id;
+    this.type = ['momentum', 'contrarian', 'random', 'value'][Math.floor(Math.random() * 4)];
+    this.riskTolerance = 0.3 + Math.random() * 0.7;
+    this.position = 0;
+    this.avgCost = 0;
+    this.cash = Math.floor(50000 + Math.random() * 500000);
+    this.orderSize = Math.floor((1 + Math.random() * 10)) * CONFIG.lotSize;
+    this.lastActionTick = 0;
+    this.actionCooldown = Math.floor(2 + Math.random() * 8);
+  }
+
+  decide(book, currentPrice, tickCount, marketSentiment) {
+    if (tickCount - this.lastActionTick < this.actionCooldown) return null;
+    this.lastActionTick = tickCount;
+
+    if (Math.random() > CONFIG.retailOrderRate) return null;
+
+    const bb = book.getBestBid();
+    const ba = book.getBestAsk();
+    // Use current price as fallback when one side is empty
+    // This allows trading to continue even when book is one-sided
+    const refBid = bb > 0 ? bb : currentPrice;
+    const refAsk = ba > 0 ? ba : currentPrice;
+    if (refBid <= 0 || refAsk <= 0) return null;
+
+    const mid = (refBid + refAsk) / 2;
+    let side = null;
+    let price = 0;
+    let qty = this.orderSize;
+
+    switch (this.type) {
+      case 'momentum': {
+        // Buy when price is rising, sell when falling
+        const recentTrades = book.tradeHistory.slice(-10);
+        if (recentTrades.length >= 3) {
+          const avgPrice = recentTrades.reduce((s, t) => s + t.price, 0) / recentTrades.length;
+          if (avgPrice > currentPrice * 1.001) {
+            side = 'buy';
+            price = refAsk + Math.random() * 3 * CONFIG.priceTick;
+          } else if (avgPrice < currentPrice * 0.999) {
+            side = 'sell';
+            price = refBid - Math.random() * 3 * CONFIG.priceTick;
+          }
+        }
+        break;
+      }
+      case 'contrarian': {
+        // Buy when falling, sell when rising
+        const recentTrades = book.tradeHistory.slice(-10);
+        if (recentTrades.length >= 3) {
+          const avgPrice = recentTrades.reduce((s, t) => s + t.price, 0) / recentTrades.length;
+          if (avgPrice < currentPrice * 0.999) {
+            side = 'buy';
+            price = refBid + Math.random() * 2 * CONFIG.priceTick;
+          } else if (avgPrice > currentPrice * 1.001) {
+            side = 'sell';
+            price = refAsk - Math.random() * 2 * CONFIG.priceTick;
+          }
+        }
+        break;
+      }
+      case 'value': {
+        // Buy low, sell high relative to some perceived value
+        const value = currentPrice * (0.98 + Math.random() * 0.04);
+        if (mid < value) {
+          side = 'buy';
+          price = refBid + Math.random() * 2 * CONFIG.priceTick;
+        } else {
+          side = 'sell';
+          price = refAsk - Math.random() * 2 * CONFIG.priceTick;
+        }
+        break;
+      }
+      default: {
+        // Random
+        if (Math.random() > 0.5) {
+          side = 'buy';
+          price = refBid + Math.random() * 3 * CONFIG.priceTick;
+        } else {
+          side = 'sell';
+          price = refAsk - Math.random() * 3 * CONFIG.priceTick;
+        }
+      }
+    }
+
+    // Sentiment influence
+    if (marketSentiment > 0.2 && Math.random() < 0.6 && !side) side = 'buy';
+    if (marketSentiment < -0.2 && Math.random() < 0.6 && !side) side = 'sell';
+    if (side === 'buy' && marketSentiment < -0.3 && Math.random() < 0.3) side = null;
+    if (side === 'sell' && marketSentiment > 0.3 && Math.random() < 0.3) side = null;
+
+    if (!side) return null;
+    price = roundPrice(price);
+    qty = Math.max(CONFIG.lotSize, Math.floor(qty * (0.5 + Math.random())));
+
+    // Check affordability
+    if (side === 'buy' && price * qty > this.cash) {
+      qty = Math.floor(this.cash / price / CONFIG.lotSize) * CONFIG.lotSize;
+      if (qty < CONFIG.lotSize) return null;
+    }
+
+    return { side, price, qty, agent: this };
+  }
+
+  onFill(side, price, qty) {
+    if (side === 'buy') {
+      // Clamp qty to what cash can afford
+      const maxAffordable = Math.floor(this.cash / price);
+      if (maxAffordable <= 0) return;
+      qty = Math.min(qty, maxAffordable);
+      const totalCost = price * qty;
+      this.cash -= totalCost;
+      const oldPos = this.position;
+      if (oldPos >= 0) {
+        this.avgCost = (oldPos * this.avgCost + qty * price) / (oldPos + qty);
+        this.position += qty;
+      } else {
+        // Covering short
+        const coverQty = Math.min(qty, -oldPos);
+        this.position += qty;
+        if (this.position > 0) this.avgCost = price;
+      }
+    } else {
+      this.cash += price * qty;
+      if (this.position > 0) {
+        const sellQty = Math.min(qty, this.position);
+        this.position -= qty;
+      } else {
+        if (this.position === 0) this.avgCost = price;
+        this.position -= qty;
+      }
+    }
+    // Safety: cash should never go negative
+    if (this.cash < 0) this.cash = 0;
+  }
+}
+
+// ============================================================
+//  K-Line (Candlestick) Aggregator
+// ============================================================
+class KLineAggregator {
+  constructor(timeframe = 5) {
+    this.timeframe = timeframe; // minutes
+    this.candles = [];
+    this.currentCandle = null;
+    this.candleStartTime = 0;
+  }
+
+  addTrade(price, qty, tickTime) {
+    if (!this.currentCandle) {
+      this.currentCandle = {
+        open: price, high: price, low: price, close: price,
+        volume: qty, time: tickTime
+      };
+      this.candleStartTime = tickTime;
+    } else {
+      this.currentCandle.high = Math.max(this.currentCandle.high, price);
+      this.currentCandle.low = Math.min(this.currentCandle.low, price);
+      this.currentCandle.close = price;
+      this.currentCandle.volume += qty;
+    }
+  }
+
+  closeCandle() {
+    if (this.currentCandle) {
+      this.candles.push(this.currentCandle);
+      if (this.candles.length > CONFIG.maxCandles) {
+        this.candles.shift();
+      }
+      this.currentCandle = null;
+    }
+  }
+
+  getCurrent() {
+    return this.currentCandle;
+  }
+
+  getAll() {
+    const all = [...this.candles];
+    if (this.currentCandle) all.push(this.currentCandle);
+    return all;
+  }
+}
+
+// ============================================================
+//  Player Account
+// ============================================================
+class PlayerAccount {
+  constructor() {
+    this.initialCash = CONFIG.initialCash;
+    this.cash = CONFIG.initialCash;
+    this.positions = {};  // symbol -> { qty, available, avgCost }
+    this.realizedPnl = 0;
+    this.orders = [];
+    this.trades = [];
+    this.ammo = CONFIG.initialAmmo;
+    this.maxAmmo = CONFIG.initialAmmo;
+  }
+
+  placeOrder(symbol, side, price, qty, type = 'limit') {
+    const order = {
+      id: uid(), symbol, side, price, qty, type,
+      filledQty: 0, avgFillPrice: 0,
+      status: 'pending', ts: Date.now(),
+      source: 'player'
+    };
+    this.orders.push(order);
+    return order;
+  }
+
+  onFill(order, fillPrice, fillQty) {
+    const symbol = order.symbol;
+    if (!this.positions[symbol]) {
+      this.positions[symbol] = { qty: 0, available: 0, frozen: 0, avgCost: 0 };
+    }
+    const pos = this.positions[symbol];
+    let actualFillQty = 0;
+
+    if (order.side === 'buy') {
+      // Clamp fill qty to what cash can afford
+      const maxAffordable = Math.floor(this.cash / fillPrice);
+      actualFillQty = Math.min(fillQty, maxAffordable);
+      if (actualFillQty <= 0) {
+        // Not enough cash, cancel remaining
+        order.status = 'cancelled';
+        return;
+      }
+      // Update filledQty only for the actual filled amount
+      order.filledQty += actualFillQty;
+      order.avgFillPrice = (order.avgFillPrice * (order.filledQty - actualFillQty) + fillPrice * actualFillQty) / order.filledQty;
+      this.cash -= fillPrice * actualFillQty;
+      const oldQty = pos.qty;
+      pos.avgCost = (oldQty * pos.avgCost + actualFillQty * fillPrice) / (oldQty + actualFillQty);
+      pos.qty += actualFillQty;
+      // T+1: today's buys are frozen, available next day
+      pos.frozen = (pos.frozen || 0) + actualFillQty;
+    } else {
+      // Sell: only sell from available (T+1 rule)
+      const sellable = Math.max(0, pos.available);
+      actualFillQty = Math.min(fillQty, sellable);
+      if (actualFillQty <= 0) {
+        order.status = 'cancelled';
+        return;
+      }
+      order.filledQty += actualFillQty;
+      order.avgFillPrice = (order.avgFillPrice * (order.filledQty - actualFillQty) + fillPrice * actualFillQty) / order.filledQty;
+      this.cash += fillPrice * actualFillQty;
+      this.realizedPnl += (fillPrice - pos.avgCost) * actualFillQty;
+      pos.qty = Math.max(0, pos.qty - actualFillQty);
+      pos.available = Math.max(0, pos.available - actualFillQty);
+    }
+
+    this.trades.push({
+      symbol, side: order.side, price: fillPrice, qty: actualFillQty,
+      ts: Date.now(), orderId: order.id
+    });
+
+    if (order.filledQty >= order.qty) {
+      order.status = 'filled';
+    }
+
+    // Safety: cash should never go negative
+    if (this.cash < 0) this.cash = 0;
+  }
+
+  cancelOrder(orderId) {
+    const order = this.orders.find(o => o.id === orderId);
+    if (order && order.status === 'pending') {
+      order.status = 'cancelled';
+      return true;
+    }
+    return false;
+  }
+
+  getPortfolioValue(currentPrices) {
+    let posValue = 0;
+    for (const sym in this.positions) {
+      const pos = this.positions[sym];
+      if (pos.qty > 0 && currentPrices[sym]) {
+        posValue += pos.qty * currentPrices[sym];
+      }
+    }
+    return this.cash + posValue;
+  }
+
+  getFloatPnl(currentPrices) {
+    let pnl = 0;
+    for (const sym in this.positions) {
+      const pos = this.positions[sym];
+      if (pos.qty > 0 && currentPrices[sym]) {
+        pnl += (currentPrices[sym] - pos.avgCost) * pos.qty;
+      }
+    }
+    return pnl;
+  }
+
+  getTotalPnl(currentPrices) {
+    return this.realizedPnl + this.getFloatPnl(currentPrices);
+  }
+
+  getReturn(currentPrices) {
+    const total = this.getPortfolioValue(currentPrices);
+    return (total - this.initialCash) / this.initialCash;
+  }
+
+  consumeAmmo(qty) {
+    const consumed = Math.min(qty, this.ammo);
+    this.ammo -= consumed;
+    return consumed;
+  }
+
+  // T+1 settlement: move frozen shares to available
+  settleT1() {
+    for (const sym in this.positions) {
+      const pos = this.positions[sym];
+      if (pos.frozen && pos.frozen > 0) {
+        pos.available += pos.frozen;
+        pos.frozen = 0;
+      }
+    }
+  }
+
+  reset() {
+    this.cash = CONFIG.initialCash;
+    this.positions = {};
+    this.realizedPnl = 0;
+    this.orders = [];
+    this.trades = [];
+    this.ammo = CONFIG.initialAmmo;
+  }
+}
+
+// ============================================================
+//  KPI Tracker
+// ============================================================
+class KPITracker {
+  constructor() {
+    this.target = CONFIG.kpiTarget;
+    this.initialCapital = CONFIG.initialCash;
+    this.dayCount = 1;
+    this.totalDays = 252; // 一年252个交易日
+    this.returns = [];
+    this.maxReturn = 0;
+    this.maxDrawdown = 0;
+    this.peakValue = CONFIG.initialCash;
+  }
+
+  update(currentValue) {
+    const ret = (currentValue - this.initialCapital) / this.initialCapital;
+    this.maxReturn = Math.max(this.maxReturn, ret);
+
+    if (currentValue > this.peakValue) this.peakValue = currentValue;
+    const dd = (this.peakValue - currentValue) / this.peakValue;
+    this.maxDrawdown = Math.max(this.maxDrawdown, dd);
+
+    // Annualized return estimate
+    const elapsedDays = this.dayCount;
+    const annualized = elapsedDays > 0 ? ret * (this.totalDays / elapsedDays) : 0;
+    return { ret, annualized, maxDrawdown: this.maxDrawdown };
+  }
+
+  nextDay() {
+    this.dayCount++;
+  }
+
+  getStatus(annualized) {
+    if (annualized >= this.target) return { status: 'ok', label: '达标' };
+    if (annualized >= 0) return { status: 'warn', label: '警告' };
+    return { status: 'danger', label: '危险' };
+  }
+
+  isFired(annualized) {
+    // 如果已过半时间，年化收益为负且距离目标很远
+    const progress = this.dayCount / this.totalDays;
+    return progress > 0.3 && annualized < -0.1;
+  }
+}
+
+// ============================================================
+//  Forum & News Generator
+// ============================================================
+const FORUM_USERS = [
+  { name: '股海老船长', avatar: '7B', color: '#58a6ff' },
+  { name: '韭菜花', avatar: '9C', color: '#f85149' },
+  { name: '价值投资客', avatar: 'JZ', color: '#3fb950' },
+  { name: '短线追涨杀跌', avatar: 'DX', color: '#d29922' },
+  { name: '量化矿工', avatar: 'LH', color: '#db6d28' },
+  { name: '吃瓜散户', avatar: 'CG', color: '#8b949e' },
+  { name: '满仓踏空', avatar: 'MC', color: '#f85149' },
+  { name: '清仓观望', avatar: 'QC', color: '#6e7681' },
+  { name: '波段高手', avatar: 'BD', color: '#58a6ff' },
+  { name: '缩量反弹', avatar: 'SL', color: '#3fb950' },
+];
+
+const FORUM_TEMPLATES_BULL = [
+  '放量突破{price}！这波看涨到{target}！',
+  '主力资金进场了，{name}要起飞',
+  '今天分时图走得不错，尾盘大概率拉升',
+  '量价齐升，持仓不动',
+  '突破前高，新一轮上涨开启',
+  '北向资金净流入，看好{name}后续走势',
+  '这个位置企稳了，逢低加仓',
+  'macd金叉，短线看涨',
+];
+const FORUM_TEMPLATES_BEAR = [
+  '跌破{price}了，要不要止损？',
+  '主力在出货吧，分时图太难看',
+  '缩量下跌，感觉还要跌',
+  '割肉了，亏了{pct}%，再也不玩了',
+  '这票废了，没有资金关注',
+  '大盘跳水，{name}跟着跌',
+  '反弹无力，减仓保平安',
+  '死叉了，短线还有下跌空间',
+];
+const FORUM_TEMPLATES_NEUTRAL = [
+  '今天震荡，观望为主',
+  '{name}横盘好久了，等方向选择',
+  '量能萎缩，变盘在即',
+  '这个位置可上可下，控制仓位',
+  '做T为主，不留过夜仓',
+  '等放量再说，现在没量',
+  '缩量整理，耐心等待',
+  '技术面看不出方向，再看看',
+];
+
+const NEWS_TEMPLATES = [
+  { tag: 'info', text: '{name}发布季度财报，营收同比增长{pct}%' },
+  { tag: 'hot', text: '{name}获机构买入评级，目标价{price}元' },
+  { tag: 'info', text: '北向资金今日净流入{amount}亿元' },
+  { tag: 'warn', text: '央行公开市场操作，释放流动性{amount}亿' },
+  { tag: 'info', text: '{name}股东大会通过分红方案，每股派{price}元' },
+  { tag: 'hot', text: '某券商研报：{name}处于行业领先地位' },
+  { tag: 'warn', text: '美联储议息会议临近，市场观望情绪浓厚' },
+  { tag: 'info', text: '{name}新增产能投产，预计贡献年收入{amount}亿' },
+  { tag: 'hot', text: '板块异动：科技板块集体拉升，{name}领涨' },
+  { tag: 'warn', text: '市场成交量突破{amount}亿，情绪高涨' },
+];
+
+class ForumNewsSystem {
+  constructor() {
+    this.forumPosts = [];
+    this.newsItems = [];
+    this.maxItems = 50;
+  }
+
+  generateForumPost(currentPrice, priceChange, instrumentName) {
+    const user = FORUM_USERS[Math.floor(Math.random() * FORUM_USERS.length)];
+    let template, sentiment;
+
+    if (priceChange > 0.005) {
+      template = FORUM_TEMPLATES_BULL[Math.floor(Math.random() * FORUM_TEMPLATES_BULL.length)];
+      sentiment = 'bullish';
+    } else if (priceChange < -0.005) {
+      template = FORUM_TEMPLATES_BEAR[Math.floor(Math.random() * FORUM_TEMPLATES_BEAR.length)];
+      sentiment = 'bearish';
+    } else {
+      template = FORUM_TEMPLATES_NEUTRAL[Math.floor(Math.random() * FORUM_TEMPLATES_NEUTRAL.length)];
+      sentiment = 'neutral';
+    }
+
+    const target = (currentPrice * (1.05 + Math.random() * 0.1)).toFixed(2);
+    const pct = (Math.random() * 20 + 5).toFixed(1);
+    const text = template
+      .replace('{price}', currentPrice.toFixed(2))
+      .replace('{target}', target)
+      .replace('{name}', instrumentName)
+      .replace('{pct}', pct);
+
+    const post = {
+      author: user.name, avatar: user.avatar, color: user.color,
+      content: text, sentiment, time: new Date()
+    };
+    this.forumPosts.unshift(post);
+    if (this.forumPosts.length > this.maxItems) this.forumPosts.pop();
+    return post;
+  }
+
+  generateNews(currentPrice, instrumentName) {
+    const template = NEWS_TEMPLATES[Math.floor(Math.random() * NEWS_TEMPLATES.length)];
+    const amount = Math.floor(10 + Math.random() * 90);
+    const price = (currentPrice * (0.8 + Math.random() * 0.4)).toFixed(2);
+    const pct = (Math.random() * 40 - 5).toFixed(1);
+    const text = template.text
+      .replace('{name}', instrumentName)
+      .replace('{price}', price)
+      .replace('{pct}', pct)
+      .replace('{amount}', amount);
+
+    const news = { tag: template.tag, text, time: new Date() };
+    this.newsItems.unshift(news);
+    if (this.newsItems.length > this.maxItems) this.newsItems.pop();
+    return news;
+  }
+
+  getMarketSentiment() {
+    if (this.forumPosts.length === 0) return 0;
+    let score = 0;
+    const recent = this.forumPosts.slice(0, 10);
+    for (const p of recent) {
+      if (p.sentiment === 'bullish') score += 1;
+      else if (p.sentiment === 'bearish') score -= 1;
+    }
+    return score / recent.length;
+  }
+
+  clear() {
+    this.forumPosts = [];
+    this.newsItems = [];
+  }
+}
+
+// ============================================================
+//  Market Simulator
+// ============================================================
+class MarketSimulator {
+  constructor() {
+    this.symbol = 'TECH100';
+    this.instrument = INSTRUMENTS[this.symbol];
+    this.book = new OrderBook(this.symbol);
+    this.agents = [];
+    this.klineAgg = new KLineAggregator(5);
+    this.account = new PlayerAccount();
+    this.kpi = new KPITracker();
+    this.forumNews = new ForumNewsSystem();
+    this.currentPrice = this.instrument.basePrice;
+    this.prevClose = this.instrument.basePrice;
+    this.dayOpen = this.instrument.basePrice;
+    this.tickCount = 0;
+    this.marketMinutes = 0;
+    this.isPaused = false;
+    this.tickInterval = CONFIG.tickInterval;
+    this.drawPath = [];  // Player's drawn K-line path
+    this.machineOrders = [];
+    this.tradeCount = 0;
+    this.volumeToday = 0;
+    this.highToday = this.instrument.basePrice;
+    this.lowToday = this.instrument.basePrice;
+    this.dailyCandles = []; // History of completed daily candles
+    this.chartTimeframe = '5'; // '5', 'day', 'week', 'month'
+
+    this.initAgents();
+    this.book.seed(this.instrument.basePrice);
+  }
+
+  initAgents() {
+    this.agents = [];
+    for (let i = 0; i < CONFIG.retailAgentCount; i++) {
+      this.agents.push(new RetailAgent(i));
+    }
+  }
+
+  switchInstrument(symbol) {
+    this.symbol = symbol;
+    this.instrument = INSTRUMENTS[symbol];
+    this.book = new OrderBook(symbol);
+    this.book.seed(this.instrument.basePrice);
+    this.currentPrice = this.instrument.basePrice;
+    this.prevClose = this.instrument.basePrice;
+    this.dayOpen = this.instrument.basePrice;
+    this.highToday = this.instrument.basePrice;
+    this.lowToday = this.instrument.basePrice;
+    this.klineAgg = new KLineAggregator(5);
+    this.marketMinutes = 0;
+    this.volumeToday = 0;
+    this.drawPath = [];
+    this.machineOrders = [];
+    this.dailyCandles = [];
+    this.book.clearOwnerOrders('machine');
+    const ndBtn1 = document.getElementById('toolNextDay');
+    if (ndBtn1) ndBtn1.classList.remove('show');
+  }
+
+  tick() {
+    if (this.isPaused) return;
+    this.tickCount++;
+    this.marketMinutes++;
+
+    // 1. Generate retail agent orders
+    const sentiment = this.forumNews.getMarketSentiment();
+    for (const agent of this.agents) {
+      const decision = agent.decide(this.book, this.currentPrice, this.tickCount, sentiment);
+      if (decision) {
+        const result = this.book.addLimitOrder(decision.side, decision.price, decision.qty, 'retail');
+        for (const fill of result.fills) {
+          agent.onFill(fill.side, fill.price, fill.qty);
+          this.klineAgg.addTrade(fill.price, fill.qty, this.marketMinutes);
+          this.volumeToday += fill.qty;
+          this.tradeCount++;
+          this.highToday = Math.max(this.highToday, fill.price);
+          this.lowToday = Math.min(this.lowToday, fill.price);
+          this.currentPrice = fill.price;
+        }
+      }
+    }
+
+    // 2. Machine executes draw path (main fund simulation)
+    this.executeDrawPath();
+
+    // 3. Process player orders
+    this.processPlayerOrders();
+
+    // 4. Update current price - use last trade price for more realistic volatility
+    // Blend: 70% last trade price, 30% mid price for stability
+    const mid = this.book.getMidPrice();
+    const lastTrade = this.book.lastPrice;
+    if (lastTrade > 0) {
+      this.currentPrice = mid > 0 ? lastTrade * 0.7 + mid * 0.3 : lastTrade;
+    } else if (mid > 0) {
+      this.currentPrice = mid;
+    }
+    // Clamp to daily limits
+    if (this.book.limitUp > 0) this.currentPrice = Math.min(this.currentPrice, this.book.limitUp);
+    if (this.book.limitDown > 0) this.currentPrice = Math.max(this.currentPrice, this.book.limitDown);
+    this.currentPrice = roundPrice(this.currentPrice);
+
+    // 4b. Check limit up/down sealing
+    this.updateLimitStatus();
+
+    // 5. Close candle every 5 ticks (5 minutes)
+    if (this.marketMinutes % 5 === 0) {
+      this.klineAgg.closeCandle();
+    }
+
+    // 6. Generate forum/news periodically
+    if (this.tickCount % 8 === 0) {
+      const priceChange = (this.currentPrice - this.prevClose) / this.prevClose;
+      this.forumNews.generateForumPost(this.currentPrice, priceChange, this.instrument.name);
+    }
+    if (this.tickCount % 15 === 0) {
+      this.forumNews.generateNews(this.currentPrice, this.instrument.name);
+    }
+
+    // 7. Check end of day
+    if (this.marketMinutes >= CONFIG.tradingHours) {
+      this.endOfDay();
+    }
+  }
+
+  // Check and update limit up/down status
+  updateLimitStatus() {
+    if (this.book.limitUp <= 0) return;
+
+    const priceChangePct = (this.currentPrice - this.prevClose) / this.prevClose;
+
+    // Limit up: price reaches +10% and there are still buy orders at limit
+    if (this.currentPrice >= this.book.limitUp) {
+      // Check if there's buy pressure at the limit (bids at or near limit up)
+      const bb = this.book.getBestBid();
+      const bidAtLimit = bb >= this.book.limitUp - CONFIG.priceTick * 2;
+      // Check if asks are thin or empty near the limit (sellers exhausted)
+      const ba = this.book.getBestAsk();
+      const askAboveLimit = ba <= 0 || ba >= this.book.limitUp;
+
+      if (bidAtLimit && askAboveLimit) {
+        if (!this.book.isLimitUp) {
+          this.book.isLimitUp = true;
+          showToast('涨停封板！', 'success');
+        }
+      } else if (this.book.isLimitUp && !askAboveLimit) {
+        // Ask appeared below limit -> limit broken
+        this.book.isLimitUp = false;
+        showToast('涨停打开', 'warn');
+      }
+    } else if (this.book.isLimitUp) {
+      // Price dropped below limit
+      this.book.isLimitUp = false;
+    }
+
+    // Limit down: price reaches -10%
+    if (this.currentPrice <= this.book.limitDown) {
+      const ba = this.book.getBestAsk();
+      const askAtLimit = ba <= this.book.limitDown + CONFIG.priceTick * 2;
+      const bb = this.book.getBestBid();
+      const bidBelowLimit = bb <= 0 || bb <= this.book.limitDown;
+
+      if (askAtLimit && bidBelowLimit) {
+        if (!this.book.isLimitDown) {
+          this.book.isLimitDown = true;
+          showToast('跌停封板！', 'error');
+        }
+      } else if (this.book.isLimitDown && !bidBelowLimit) {
+        this.book.isLimitDown = false;
+        showToast('跌停打开', 'warn');
+      }
+    } else if (this.book.isLimitDown) {
+      this.book.isLimitDown = false;
+    }
+  }
+
+  executeDrawPath() {
+    if (this.drawPath.length === 0) return;
+    if (this.account.ammo <= 0) return;
+
+    // Find the nearest draw point ahead of current time
+    const currentTime = this.marketMinutes;
+    let targetPoint = null;
+    let targetIdx = -1;
+
+    for (let i = 0; i < this.drawPath.length; i++) {
+      if (this.drawPath[i].time >= currentTime) {
+        targetPoint = this.drawPath[i];
+        targetIdx = i;
+        break;
+      }
+    }
+
+    if (!targetPoint) {
+      // Use last draw point
+      targetPoint = this.drawPath[this.drawPath.length - 1];
+    }
+
+    const targetPrice = targetPoint.price;
+    const currentPrice = this.currentPrice;
+    const priceDiff = targetPrice - currentPrice;
+
+    // Determine order size based on price difference
+    const threshold = this.instrument.basePrice * 0.002; // 0.2% threshold
+    let orderQty = 0;
+    let side = null;
+
+    if (priceDiff > threshold) {
+      // Target is higher -> buy to push price up
+      side = 'buy';
+      const strength = Math.min(1, Math.abs(priceDiff) / (this.instrument.basePrice * 0.02));
+      // Increased from 0.003 to 0.02 for more aggressive price impact
+      orderQty = Math.floor(this.account.maxAmmo * 0.02 * strength / CONFIG.lotSize) * CONFIG.lotSize;
+      orderQty = Math.min(orderQty, this.account.ammo);
+      // Limit by available cash
+      const ba = this.book.getBestAsk();
+      const buyPrice = ba > 0 ? ba : currentPrice;
+      const maxByCash = Math.floor(this.account.cash / buyPrice / CONFIG.lotSize) * CONFIG.lotSize;
+      orderQty = Math.min(orderQty, maxByCash);
+    } else if (priceDiff < -threshold) {
+      // Target is lower -> sell to push price down
+      side = 'sell';
+      const strength = Math.min(1, Math.abs(priceDiff) / (this.instrument.basePrice * 0.02));
+      orderQty = Math.floor(this.account.maxAmmo * 0.02 * strength / CONFIG.lotSize) * CONFIG.lotSize;
+      orderQty = Math.min(orderQty, this.account.ammo);
+      // Limit by available shares (T+1: only available can be sold)
+      const pos = this.account.positions[this.symbol];
+      const availShares = pos ? pos.available : 0;
+      orderQty = Math.min(orderQty, Math.floor(availShares / CONFIG.lotSize) * CONFIG.lotSize);
+    }
+
+    if (side && orderQty >= CONFIG.lotSize) {
+      // Place as limit order near best price to ensure execution
+      const bb = this.book.getBestBid();
+      const ba = this.book.getBestAsk();
+      let price;
+      let useMarketOrder = false;
+
+      if (side === 'buy') {
+        if (ba > 0) {
+          price = ba;  // Buy at ask (marketable)
+        } else {
+          // No asks available - use market order to sweep any remaining liquidity
+          // or place at progressively higher price to attract sellers
+          useMarketOrder = true;
+        }
+      } else {
+        if (bb > 0) {
+          price = bb;  // Sell at bid (marketable)
+        } else {
+          useMarketOrder = true;
+        }
+      }
+
+      let result;
+      if (useMarketOrder) {
+        result = this.book.addMarketOrder(side, orderQty);
+      } else {
+        result = this.book.addLimitOrder(side, price, orderQty, 'machine');
+      }
+
+      for (const fill of result.fills) {
+        this.account.consumeAmmo(fill.qty);
+        // Machine trades = player's main fund trades, update account
+        this.applyMachineFill(side, fill.price, fill.qty);
+        this.klineAgg.addTrade(fill.price, fill.qty, this.marketMinutes);
+        this.volumeToday += fill.qty;
+        this.tradeCount++;
+        this.highToday = Math.max(this.highToday, fill.price);
+        this.lowToday = Math.min(this.lowToday, fill.price);
+        this.currentPrice = fill.price;
+      }
+
+      // If no fills and buying, place a bid above current to attract sellers
+      if (result.fills.length === 0 && side === 'buy' && orderQty > 0) {
+        // Place a bid slightly above current price to stimulate selling
+        const stimPrice = this.book.clampPrice(roundPrice(this.currentPrice * 1.001));
+        this.book.addLimitOrder('buy', stimPrice, orderQty, 'machine');
+      }
+    }
+  }
+
+  applyMachineFill(side, price, qty) {
+    // Machine fills are the player's main fund trades
+    // Create a synthetic order to feed into account
+    const order = {
+      id: uid(), symbol: this.symbol, side, price, qty,
+      filledQty: 0, avgFillPrice: 0, status: 'pending',
+      ts: Date.now(), source: 'machine', _submitted: true
+    };
+    this.account.orders.push(order);
+    this.account.onFill(order, price, qty);
+    order.status = 'filled';
+  }
+
+  processPlayerOrders() {
+    const pendingOrders = this.account.orders.filter(o =>
+      o.status === 'pending' && o.symbol === this.symbol
+    );
+
+    for (const order of pendingOrders) {
+      if (!order._submitted) {
+        // First time: submit to order book
+        order._submitted = true;
+        const result = this.book.addLimitOrder(order.side, order.price, order.qty, 'player');
+        for (const fill of result.fills) {
+          this.account.onFill(order, fill.price, fill.qty);
+          this.klineAgg.addTrade(fill.price, fill.qty, this.marketMinutes);
+          this.volumeToday += fill.qty;
+          this.tradeCount++;
+          this.highToday = Math.max(this.highToday, fill.price);
+          this.lowToday = Math.min(this.lowToday, fill.price);
+          this.currentPrice = fill.price;
+        }
+        if (order.filledQty >= order.qty) {
+          order.status = 'filled';
+        }
+      } else {
+        // Already submitted: check book for fills
+        const bookQty = this.book.getPlayerOrderQty(order.side, order.price, 'player');
+        const expectedRemaining = order.qty - order.filledQty;
+        if (bookQty < expectedRemaining) {
+          const fillQty = expectedRemaining - bookQty;
+          this.account.onFill(order, order.price, fillQty);
+          this.klineAgg.addTrade(order.price, fillQty, this.marketMinutes);
+          this.volumeToday += fillQty;
+          this.tradeCount++;
+          this.highToday = Math.max(this.highToday, order.price);
+          this.lowToday = Math.min(this.lowToday, order.price);
+          if (order.filledQty >= order.qty) {
+            order.status = 'filled';
+          }
+        }
+      }
+    }
+  }
+
+  placePlayerOrder(side, price, qty) {
+    if (side === 'buy' && price * qty > this.account.cash) {
+      showToast('资金不足', 'error');
+      return null;
+    }
+    if (side === 'sell') {
+      const pos = this.account.positions[this.symbol];
+      if (!pos || pos.available < qty) {
+        showToast('可用持仓不足', 'error');
+        return null;
+      }
+      pos.available -= qty;
+    }
+
+    const order = this.account.placeOrder(this.symbol, side, price, qty);
+    showToast(`已挂${side === 'buy' ? '买' : '卖'}单 ${fmtInt(qty)}股 @ ${fmt(price)}`, 'success');
+    return order;
+  }
+
+  cancelPlayerOrder(orderId) {
+    const order = this.account.orders.find(o => o.id === orderId);
+    if (!order) return false;
+
+    // Cancel from order book
+    this.book.cancelOwnerOrder(order.side, order.price, 'player');
+
+    // If sell order, return available
+    if (order.side === 'sell') {
+      const pos = this.account.positions[this.symbol];
+      if (pos) pos.available += (order.qty - order.filledQty);
+    }
+
+    this.account.cancelOrder(orderId);
+    showToast('委托已撤单', 'warn');
+    return true;
+  }
+
+  setDrawPath(path) {
+    this.drawPath = path;
+    // Clear previous machine orders
+    this.book.clearOwnerOrders('machine');
+    this.machineOrders = [];
+  }
+
+  clearDrawPath() {
+    this.drawPath = [];
+    this.book.clearOwnerOrders('machine');
+    this.machineOrders = [];
+  }
+
+  endOfDay() {
+    this.klineAgg.closeCandle();
+    this.isPaused = true;
+
+    // Save daily candle
+    const dailyCandle = {
+      open: this.dayOpen,
+      high: this.highToday,
+      low: this.lowToday,
+      close: this.currentPrice,
+      volume: this.volumeToday,
+      time: this.kpi.dayCount,
+      day: this.kpi.dayCount
+    };
+    this.dailyCandles.push(dailyCandle);
+
+    const currentPrices = {};
+    currentPrices[this.symbol] = this.currentPrice;
+    const totalValue = this.account.getPortfolioValue(currentPrices);
+    const kpiResult = this.kpi.update(totalValue);
+
+    // Reset ammo for next day
+    this.account.ammo = this.account.maxAmmo;
+
+    // Show next-day button in toolbar (no popup)
+    const pnl = totalValue - this.account.initialCash;
+    const ndBtn = document.getElementById('toolNextDay');
+    const ndSummary = document.getElementById('ndSummary');
+    if (ndBtn) {
+      ndSummary.textContent = `第${this.kpi.dayCount}天 | 资产${fmt(totalValue,0)} | ${pnl>=0?'+':''}${fmt(pnl)} | ${fmtPct(kpiResult.annualized)}`;
+      ndBtn.classList.add('show');
+    }
+  }
+
+  // Get candles for the selected timeframe
+  getCandlesForTimeframe() {
+    if (this.chartTimeframe === '5') {
+      return this.klineAgg.getAll();
+    }
+    if (this.chartTimeframe === 'day') {
+      // Add current day's forming candle
+      const result = [...this.dailyCandles];
+      if (!this.isPaused && this.marketMinutes > 0) {
+        result.push({
+          open: this.dayOpen, high: this.highToday,
+          low: this.lowToday, close: this.currentPrice,
+          volume: this.volumeToday, time: this.kpi.dayCount,
+          day: this.kpi.dayCount, forming: true
+        });
+      } else if (this.isPaused) {
+        // Day just ended, dailyCandles already has it
+      }
+      return result;
+    }
+    if (this.chartTimeframe === 'week') {
+      return this.aggregateCandles(this.dailyCandles, 5);
+    }
+    if (this.chartTimeframe === 'month') {
+      return this.aggregateCandles(this.dailyCandles, 20);
+    }
+    return this.klineAgg.getAll();
+  }
+
+  aggregateCandles(dailyCandles, period) {
+    if (!dailyCandles || dailyCandles.length === 0) return [];
+    const result = [];
+    for (let i = 0; i < dailyCandles.length; i += period) {
+      const chunk = dailyCandles.slice(i, i + period);
+      if (chunk.length === 0) continue;
+      result.push({
+        open: chunk[0].open,
+        high: Math.max(...chunk.map(c => c.high)),
+        low: Math.min(...chunk.map(c => c.low)),
+        close: chunk[chunk.length - 1].close,
+        volume: chunk.reduce((s, c) => s + c.volume, 0),
+        time: chunk[0].time
+      });
+    }
+    return result;
+  }
+
+  nextDay() {
+    this.prevClose = this.currentPrice;
+    this.dayOpen = this.currentPrice;
+    this.highToday = this.currentPrice;
+    this.lowToday = this.currentPrice;
+    this.marketMinutes = 0;
+    this.volumeToday = 0;
+    this.isPaused = false;
+    this.kpi.nextDay();
+    this.drawPath = [];
+    this.book.clearOwnerOrders('machine');
+
+    // T+1 settlement: yesterday's buys become available
+    this.account.settleT1();
+
+    // Re-seed order book around new price
+    this.book.bids.clear();
+    this.book.asks.clear();
+    this.book.seed(this.currentPrice);
+    this.book.setPriceLimits(this.currentPrice);
+
+    // Hide next-day button
+    const ndBtn = document.getElementById('toolNextDay');
+    if (ndBtn) ndBtn.classList.remove('show');
+  }
+
+  reset() {
+    this.instrument = INSTRUMENTS[this.symbol];
+    this.book = new OrderBook(this.symbol);
+    this.book.seed(this.instrument.basePrice);
+    this.book.setPriceLimits(this.instrument.basePrice);
+    this.currentPrice = this.instrument.basePrice;
+    this.prevClose = this.instrument.basePrice;
+    this.dayOpen = this.instrument.basePrice;
+    this.highToday = this.instrument.basePrice;
+    this.lowToday = this.instrument.basePrice;
+    this.klineAgg = new KLineAggregator(5);
+    this.account = new PlayerAccount();
+    this.kpi = new KPITracker();
+    this.forumNews.clear();
+    this.tickCount = 0;
+    this.marketMinutes = 0;
+    this.isPaused = false;
+    this.drawPath = [];
+    this.machineOrders = [];
+    this.tradeCount = 0;
+    this.volumeToday = 0;
+    this.dailyCandles = [];
+    this.initAgents();
+    const ndBtn2 = document.getElementById('toolNextDay');
+    if (ndBtn2) ndBtn2.classList.remove('show');
+  }
+}
+
+// ============================================================
+//  Chart Renderer (Canvas K-Line)
+// ============================================================
+class KLineChart {
+  constructor(canvasId, sim) {
+    this.canvas = document.getElementById(canvasId);
+    this.ctx = this.canvas.getContext('2d');
+    this.sim = sim;
+    this.padding = { top: 10, right: 70, bottom: 30, left: 10 };
+    this.candleWidth = 7;
+    this.candleGap = 3;
+    this.priceRange = { min: 0, max: 0 };
+    this.volumeRange = { min: 0, max: 0 };
+    this.crosshair = null;
+    this.isDrawing = false;
+    this.isPanning = false;
+    this.drawPoints = [];
+    this.panStartX = 0;
+    this.panStartOffset = 0;
+    this.scrollOffset = 0; // Index of first visible candle
+    this.autoScroll = true; // Auto-scroll to latest in intraday
+
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+
+    this.setupEvents();
+  }
+
+  resize() {
+    const wrap = this.canvas.parentElement;
+    this.canvas.width = wrap.clientWidth;
+    this.canvas.height = wrap.clientHeight;
+    this.width = this.canvas.width;
+    this.height = this.canvas.height;
+  }
+
+  setMode(mode) {
+    // Mode is now implicit: right-click = draw, left-click = pan
+    // Keep for compatibility but no-op
+  }
+
+  setupEvents() {
+    // Left-click drag = pan, Right-click drag = draw
+    this.canvas.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      if (e.button === 0) {
+        // Left click - start panning
+        this.isPanning = true;
+        this.autoScroll = false;
+        this.panStartX = e.clientX;
+        this.panStartOffset = this.scrollOffset;
+      } else if (e.button === 2) {
+        // Right click - start drawing
+        this.isDrawing = true;
+        this.drawPoints = [];
+        this.handleDraw(e);
+      }
+    });
+
+    this.canvas.addEventListener('mousemove', (e) => {
+      const pos = this.getMousePos(e);
+      this.crosshair = pos;
+
+      if (this.isPanning) {
+        const dx = e.clientX - this.panStartX;
+        const slotW = this.candleWidth + this.candleGap;
+        const candleShift = Math.round(dx / slotW);
+        this.scrollOffset = Math.max(0, this.panStartOffset - candleShift);
+      }
+
+      if (this.isDrawing) {
+        this.handleDraw(e);
+      }
+    });
+
+    this.canvas.addEventListener('mouseup', (e) => {
+      if (this.isPanning) {
+        this.isPanning = false;
+      }
+      if (this.isDrawing) {
+        this.isDrawing = false;
+        this.finalizeDraw();
+      }
+    });
+
+    this.canvas.addEventListener('mouseleave', () => {
+      this.crosshair = null;
+      if (this.isPanning) this.isPanning = false;
+      if (this.isDrawing) {
+        this.isDrawing = false;
+        this.finalizeDraw();
+      }
+    });
+
+    // Mouse wheel = zoom
+    this.canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -1 : 1;
+      const oldSlotW = this.candleWidth + this.candleGap;
+      this.candleWidth = Math.max(1, Math.min(20, this.candleWidth + delta));
+      this.candleGap = Math.max(0.5, this.candleWidth * 0.3);
+      // Adjust scroll to keep view centered on same candles
+      const newSlotW = this.candleWidth + this.candleGap;
+      const ratio = newSlotW / oldSlotW;
+      this.scrollOffset = Math.floor(this.scrollOffset * ratio);
+    });
+
+    // Prevent context menu on right-click
+    this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+
+  getMousePos(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    };
+  }
+
+  handleDraw(e) {
+    const pos = this.getMousePos(e);
+    const price = this.yToPrice(pos.y);
+    const time = this.xToTime(pos.x);
+
+    if (price > 0 && time >= 0) {
+      this.drawPoints.push({ x: pos.x, y: pos.y, price, time });
+    }
+  }
+
+  finalizeDraw() {
+    if (this.drawPoints.length < 2) {
+      this.drawPoints = [];
+      return;
+    }
+
+    // Only allow drawing in intraday mode
+    if (this.sim.chartTimeframe !== '5') {
+      this.drawPoints = [];
+      showToast('请在分时图上绘制K线', 'warn');
+      return;
+    }
+
+    // Sort by x and deduplicate
+    this.drawPoints.sort((a, b) => a.x - b.x);
+
+    // Interpolate to create a path with time markers
+    const path = [];
+    const minTime = this.sim.marketMinutes;
+
+    for (let i = 0; i < this.drawPoints.length; i++) {
+      const pt = this.drawPoints[i];
+      // Map x position to future time
+      const chartStart = this.padding.left;
+      const chartEnd = this.width - this.padding.right;
+      const progress = (pt.x - chartStart) / (chartEnd - chartStart);
+      const futureTime = minTime + Math.floor(progress * 120); // Draw up to 120 minutes into future
+      if (futureTime >= this.sim.marketMinutes) {
+        path.push({ price: pt.price, time: futureTime });
+      }
+    }
+
+    if (path.length > 0) {
+      this.sim.setDrawPath(path);
+      showToast(`已绘制K线路径，机器开始执行（${path.length}个目标点）`, 'success');
+    }
+  }
+
+  yToPrice(y) {
+    const chartTop = this.padding.top;
+    const chartBottom = this.height - this.padding.bottom - 60; // 60px for volume
+    if (y < chartTop || y > chartBottom) return 0;
+    const range = this.priceRange.max - this.priceRange.min;
+    if (range <= 0) return 0;
+    return this.priceRange.max - ((y - chartTop) / (chartBottom - chartTop)) * range;
+  }
+
+  xToTime(x) {
+    return this.sim.marketMinutes + Math.floor((x - this.padding.left) / (this.candleWidth + this.candleGap));
+  }
+
+  chartWidth() {
+    return this.width - this.padding.left - this.padding.right;
+  }
+
+  render() {
+    const ctx = this.ctx;
+    ctx.clearRect(0, 0, this.width, this.height);
+
+    // Use timeframe-aware candle data
+    const candles = this.sim.getCandlesForTimeframe();
+    if (candles.length === 0) {
+      ctx.fillStyle = '#6e7681';
+      ctx.font = '14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('等待行情数据...', this.width / 2, this.height / 2);
+      return;
+    }
+
+    const chartW = this.chartWidth();
+    const slotW = this.candleWidth + this.candleGap;
+    const visibleCount = Math.ceil(chartW / slotW);
+
+    // Auto-scroll: show latest candles in intraday mode
+    if (this.autoScroll || this.sim.chartTimeframe !== '5') {
+      this.scrollOffset = Math.max(0, candles.length - visibleCount);
+    }
+    // Clamp scroll offset
+    this.scrollOffset = Math.max(0, Math.min(this.scrollOffset, Math.max(0, candles.length - visibleCount)));
+
+    const startIdx = Math.floor(this.scrollOffset);
+    const visibleCandles = candles.slice(startIdx, startIdx + visibleCount + 1);
+
+    // Calculate price range from visible candles
+    let pMin = Infinity, pMax = -Infinity;
+    let vMax = 0;
+    for (const c of visibleCandles) {
+      pMin = Math.min(pMin, c.low);
+      pMax = Math.max(pMax, c.high);
+      vMax = Math.max(vMax, c.volume);
+    }
+
+    // Include draw path in price range
+    if (this.drawPoints.length > 0) {
+      for (const p of this.drawPoints) {
+        pMin = Math.min(pMin, p.price);
+        pMax = Math.max(pMax, p.price);
+      }
+    }
+
+    // Add padding to range
+    const pPad = (pMax - pMin) * 0.1 || pMax * 0.01;
+    pMin -= pPad;
+    pMax += pPad;
+
+    this.priceRange = { min: pMin, max: pMax };
+    this.volumeRange = { min: 0, max: vMax };
+    this.slotWidth = slotW;
+
+    // Draw grid
+    this.drawGrid(ctx, pMin, pMax);
+
+    // Draw volume bars
+    this.drawVolume(ctx, visibleCandles, startIdx);
+
+    // Draw candles or line chart based on density
+    if (this.candleWidth < 2) {
+      this.drawLineChart(ctx, visibleCandles, startIdx, pMin, pMax);
+    } else {
+      this.drawCandles(ctx, visibleCandles, startIdx, pMin, pMax);
+    }
+
+    // Draw draw path
+    if (this.drawPoints.length > 1) {
+      this.drawPath(ctx);
+    }
+
+    // Draw crosshair
+    if (this.crosshair) {
+      this.drawCrosshair(ctx, pMin, pMax);
+    }
+
+    // Draw current price line
+    this.drawCurrentPrice(ctx, pMin, pMax);
+
+    // Draw machine ammo indicator
+    this.drawAmmoIndicator(ctx);
+  }
+
+  drawGrid(ctx, pMin, pMax) {
+    const chartTop = this.padding.top;
+    const chartBottom = this.height - this.padding.bottom - 60;
+    const chartLeft = this.padding.left;
+    const chartRight = this.width - this.padding.right;
+
+    ctx.strokeStyle = 'rgba(48, 54, 61, 0.5)';
+    ctx.lineWidth = 1;
+    ctx.font = '10px SF Mono, monospace';
+    ctx.fillStyle = '#6e7681';
+    ctx.textAlign = 'left';
+
+    // Horizontal price lines
+    const lines = 6;
+    for (let i = 0; i <= lines; i++) {
+      const y = chartTop + (chartBottom - chartTop) * i / lines;
+      const price = pMax - (pMax - pMin) * i / lines;
+      ctx.beginPath();
+      ctx.moveTo(chartLeft, y);
+      ctx.lineTo(chartRight, y);
+      ctx.stroke();
+      ctx.fillText(price.toFixed(2), chartRight + 4, y + 3);
+    }
+
+    // Vertical time lines
+    const vLines = 6;
+    for (let i = 0; i <= vLines; i++) {
+      const x = chartLeft + this.chartWidth() * i / vLines;
+      ctx.beginPath();
+      ctx.moveTo(x, chartTop);
+      ctx.lineTo(x, chartBottom);
+      ctx.stroke();
+    }
+  }
+
+  drawVolume(ctx, candles, startIdx) {
+    const volTop = this.height - this.padding.bottom - 50;
+    const volBottom = this.height - this.padding.bottom;
+    const volHeight = volBottom - volTop;
+    const chartLeft = this.padding.left;
+    const slotW = this.slotWidth || (this.candleWidth + this.candleGap);
+
+    ctx.fillStyle = '#6e7681';
+    ctx.font = '10px SF Mono, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('VOL', chartLeft, volTop - 2);
+
+    for (let i = 0; i < candles.length; i++) {
+      const c = candles[i];
+      const x = chartLeft + i * slotW;
+      const h = (c.volume / this.volumeRange.max) * volHeight;
+      const isUp = c.close >= c.open;
+      ctx.fillStyle = isUp ? 'rgba(248, 81, 73, 0.3)' : 'rgba(63, 185, 80, 0.3)';
+      ctx.fillRect(x, volBottom - h, Math.max(1, this.candleWidth), h);
+    }
+  }
+
+  drawCandles(ctx, candles, startIdx, pMin, pMax) {
+    const chartTop = this.padding.top;
+    const chartBottom = this.height - this.padding.bottom - 60;
+    const chartHeight = chartBottom - chartTop;
+    const chartLeft = this.padding.left;
+    const range = pMax - pMin;
+    const slotW = this.slotWidth || (this.candleWidth + this.candleGap);
+
+    for (let i = 0; i < candles.length; i++) {
+      const c = candles[i];
+      const x = chartLeft + i * slotW + this.candleWidth / 2;
+
+      const yOpen = chartTop + ((pMax - c.open) / range) * chartHeight;
+      const yClose = chartTop + ((pMax - c.close) / range) * chartHeight;
+      const yHigh = chartTop + ((pMax - c.high) / range) * chartHeight;
+      const yLow = chartTop + ((pMax - c.low) / range) * chartHeight;
+
+      const isUp = c.close >= c.open;
+      const color = isUp ? '#f85149' : '#3fb950';
+
+      // Wick
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, yHigh);
+      ctx.lineTo(x, yLow);
+      ctx.stroke();
+
+      // Body
+      const bodyTop = Math.min(yOpen, yClose);
+      const bodyHeight = Math.max(1, Math.abs(yClose - yOpen));
+      ctx.fillStyle = color;
+      ctx.fillRect(x - this.candleWidth / 2, bodyTop, this.candleWidth, bodyHeight);
+    }
+  }
+
+  drawLineChart(ctx, candles, startIdx, pMin, pMax) {
+    // When candles are too dense, draw as a thin line (close price only)
+    const chartTop = this.padding.top;
+    const chartBottom = this.height - this.padding.bottom - 60;
+    const chartHeight = chartBottom - chartTop;
+    const chartLeft = this.padding.left;
+    const range = pMax - pMin;
+    const slotW = this.slotWidth || (this.candleWidth + this.candleGap);
+
+    ctx.strokeStyle = '#58a6ff';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 0; i < candles.length; i++) {
+      const c = candles[i];
+      const x = chartLeft + i * slotW + this.candleWidth / 2;
+      const y = chartTop + ((pMax - c.close) / range) * chartHeight;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+
+  drawPath(ctx) {
+    // Draw the draw path at the exact mouse positions (using raw coordinates)
+    ctx.strokeStyle = 'rgba(88, 166, 255, 0.6)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    for (let i = 0; i < this.drawPoints.length; i++) {
+      const pt = this.drawPoints[i];
+      if (i === 0) ctx.moveTo(pt.x, pt.y);
+      else ctx.lineTo(pt.x, pt.y);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Draw points at exact mouse positions
+    ctx.fillStyle = 'rgba(88, 166, 255, 0.8)';
+    for (let i = 0; i < this.drawPoints.length; i++) {
+      const pt = this.drawPoints[i];
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  drawCrosshair(ctx, pMin, pMax) {
+    const chartTop = this.padding.top;
+    const chartBottom = this.height - this.padding.bottom - 60;
+    const chartLeft = this.padding.left;
+    const chartRight = this.width - this.padding.right;
+
+    ctx.strokeStyle = 'rgba(139, 148, 158, 0.3)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([2, 2]);
+
+    // Vertical line
+    ctx.beginPath();
+    ctx.moveTo(this.crosshair.x, chartTop);
+    ctx.lineTo(this.crosshair.x, chartBottom);
+    ctx.stroke();
+
+    // Horizontal line
+    ctx.beginPath();
+    ctx.moveTo(chartLeft, this.crosshair.y);
+    ctx.lineTo(chartRight, this.crosshair.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Price label
+    const price = this.yToPrice(this.crosshair.y);
+    if (price > 0) {
+      ctx.fillStyle = '#21262d';
+      ctx.fillRect(chartRight, this.crosshair.y - 8, 60, 16);
+      ctx.fillStyle = '#e6edf3';
+      ctx.font = '10px SF Mono, monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(price.toFixed(2), chartRight + 4, this.crosshair.y + 3);
+    }
+  }
+
+  drawCurrentPrice(ctx, pMin, pMax) {
+    const chartTop = this.padding.top;
+    const chartBottom = this.height - this.padding.bottom - 60;
+    const chartHeight = chartBottom - chartTop;
+    const range = pMax - pMin;
+    const chartRight = this.width - this.padding.right;
+
+    const y = chartTop + ((pMax - this.sim.currentPrice) / range) * chartHeight;
+
+    const isUp = this.sim.currentPrice >= this.sim.prevClose;
+    const color = isUp ? '#f85149' : '#3fb950';
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 2]);
+    ctx.beginPath();
+    ctx.moveTo(this.padding.left, y);
+    ctx.lineTo(chartRight, y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Price tag
+    ctx.fillStyle = color;
+    ctx.fillRect(chartRight, y - 8, 60, 16);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 10px SF Mono, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(this.sim.currentPrice.toFixed(2), chartRight + 4, y + 3);
+  }
+
+  drawAmmoIndicator(ctx) {
+    const x = this.padding.left + 4;
+    const y = this.padding.top + 4;
+    const w = 120;
+    const h = 4;
+
+    ctx.fillStyle = 'rgba(48, 54, 61, 0.8)';
+    ctx.fillRect(x, y, w, h);
+
+    const ratio = this.sim.account.ammo / this.sim.account.maxAmmo;
+    ctx.fillStyle = 'rgba(88, 166, 255, 0.8)';
+    ctx.fillRect(x, y, w * ratio, h);
+
+    ctx.fillStyle = '#8b949e';
+    ctx.font = '9px SF Mono, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('AMMO', x, y + 16);
+  }
+}
+
+// ============================================================
+//  UI Controller
+// ============================================================
+class UIController {
+  constructor(sim, chart) {
+    this.sim = sim;
+    this.chart = chart;
+    this.activeTab = 'buy';
+    this.activePane = 'positions';
+    this.currentPrices = {};
+  }
+
+  updateAll() {
+    this.currentPrices[this.sim.symbol] = this.sim.currentPrice;
+    this.updateTopBar();
+    this.updateOrderBook();
+    this.updateChipDist();
+    this.updateAccount();
+    this.updatePositions();
+    this.updateOrders();
+    this.updateForum();
+    this.updateNews();
+    this.updateKPI();
+    this.chart.render();
+  }
+
+  updateTopBar() {
+    const price = this.sim.currentPrice;
+    const change = price - this.sim.prevClose;
+    const pct = change / this.sim.prevClose;
+    const isUp = change >= 0;
+
+    document.getElementById('topPrice').textContent = price.toFixed(2);
+    document.getElementById('topPrice').style.color = isUp ? '#f85149' : '#3fb950';
+    document.getElementById('topChange').textContent =
+      `${isUp ? '+' : ''}${change.toFixed(2)} (${isUp ? '+' : ''}${(pct * 100).toFixed(2)}%)`;
+    document.getElementById('topChange').style.color = isUp ? '#f85149' : '#3fb950';
+
+    // Clock
+    const minutes = this.sim.marketMinutes;
+    const totalMin = 570 + minutes; // 09:30 = 570 min from midnight
+    let h, m;
+    if (minutes < 120) {
+      h = Math.floor((570 + minutes) / 60);
+      m = (570 + minutes) % 60;
+    } else {
+      const afternoonMin = minutes - 120;
+      h = Math.floor((780 + afternoonMin) / 60);
+      m = (780 + afternoonMin) % 60;
+    }
+    document.getElementById('clock').textContent =
+      `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
+
+    // KPI
+    const totalValue = this.sim.account.getPortfolioValue(this.currentPrices);
+    const kpiResult = this.sim.kpi.update(totalValue);
+    document.getElementById('kpiReturn').textContent = fmtPct(kpiResult.annualized);
+
+    const kpiStatus = this.sim.kpi.getStatus(kpiResult.annualized);
+    const statusEl = document.getElementById('kpiStatus');
+    statusEl.textContent = kpiStatus.label;
+    statusEl.className = 'status ' + kpiStatus.status;
+  }
+
+  updateOrderBook() {
+    const depth = this.sim.book.getDepth(5);
+    const ob = document.getElementById('orderBook');
+    let html = '';
+
+    // Asks (reversed - highest at top)
+    for (let i = depth.asks.length - 1; i >= 0; i--) {
+      const a = depth.asks[i];
+      const maxQty = Math.max(...depth.asks.map(x => x.qty), ...depth.bids.map(x => x.qty), 1);
+      const barW = (a.qty / maxQty) * 100;
+      html += `<div class="ob-row ask">
+        <span class="ob-price">${a.price.toFixed(2)}</span>
+        <span class="ob-size">${fmtInt(a.qty)}</span>
+        <span class="ob-total">${fmtInt(a.total)}</span>
+        <div class="ob-bar" style="width:${barW}%"></div>
+      </div>`;
+    }
+
+    // Spread
+    const lastPrice = this.sim.currentPrice;
+    const spread = this.sim.book.getSpread();
+    const isUp = lastPrice >= this.sim.prevClose;
+    html += `<div class="ob-spread">
+      <span class="last-price" style="color:${isUp ? '#f85149' : '#3fb950'}">${lastPrice.toFixed(2)}</span>
+      <span class="spread-val">价差 ${spread.toFixed(2)}</span>
+    </div>`;
+
+    // Bids
+    for (const b of depth.bids) {
+      const maxQty = Math.max(...depth.asks.map(x => x.qty), ...depth.bids.map(x => x.qty), 1);
+      const barW = (b.qty / maxQty) * 100;
+      html += `<div class="ob-row bid">
+        <span class="ob-price">${b.price.toFixed(2)}</span>
+        <span class="ob-size">${fmtInt(b.qty)}</span>
+        <span class="ob-total">${fmtInt(b.total)}</span>
+        <div class="ob-bar" style="width:${barW}%"></div>
+      </div>`;
+    }
+
+    ob.innerHTML = html;
+  }
+
+  updateChipDist() {
+    const el = document.getElementById('chipDist');
+    if (!el) return;
+
+    // Build chip distribution from trade history
+    const trades = this.sim.book.tradeHistory;
+    if (trades.length === 0) {
+      el.innerHTML = '<div style="text-align:center;color:#6e7681;padding:20px">暂无成交数据</div>';
+      return;
+    }
+
+    // Aggregate volume by price level
+    const priceBuckets = {};
+    const currentPrice = this.sim.currentPrice;
+    const tickSize = this.sim.instrument.basePrice * 0.005; // 0.5% buckets
+
+    for (const t of trades) {
+      const bucket = roundPrice(Math.round(t.price / tickSize) * tickSize);
+      if (!priceBuckets[bucket]) priceBuckets[bucket] = 0;
+      priceBuckets[bucket] += t.qty;
+    }
+
+    // Sort by price descending
+    const sortedPrices = Object.keys(priceBuckets).map(Number).sort((a, b) => b - a);
+    const maxQty = Math.max(...Object.values(priceBuckets), 1);
+
+    let html = '';
+    let foundCurrent = false;
+    for (const price of sortedPrices) {
+      const qty = priceBuckets[price];
+      const barW = (qty / maxQty) * 100;
+      const isProfit = price >= currentPrice; // Holding at price >= current means profit for longs
+      const cls = isProfit ? 'profit' : 'loss';
+      const isCurrent = !foundCurrent && price <= currentPrice;
+      if (isCurrent) foundCurrent = true;
+
+      html += `<div class="cd-row">
+        <span class="cd-price" style="color:${price >= currentPrice ? '#f85149' : '#3fb950'}">${price.toFixed(2)}</span>
+        <div class="cd-bar-wrap"><div class="cd-bar ${cls}" style="width:${barW}%"></div></div>
+        <span class="cd-qty">${fmtInt(qty)}</span>
+      </div>`;
+    }
+
+    // Add current price marker
+    html += `<div style="text-align:center;padding:4px;font-size:10px;color:var(--accent);border-top:1px solid var(--rule)">
+      现价 ${currentPrice.toFixed(2)} | 总成交 ${fmtInt(trades.reduce((s,t)=>s+t.qty,0))}股
+    </div>`;
+
+    el.innerHTML = html;
+  }
+
+  updateAccount() {
+    const totalValue = this.sim.account.getPortfolioValue(this.currentPrices);
+    const floatPnl = this.sim.account.getFloatPnl(this.currentPrices);
+    const totalPnl = this.sim.account.getTotalPnl(this.currentPrices);
+    const ret = this.sim.account.getReturn(this.currentPrices);
+    const posValue = totalValue - this.sim.account.cash;
+
+    // Top bar compact account info
+    const topTotal = document.getElementById('topTotalAssets');
+    const topPos = document.getElementById('topPosValue');
+    const topAvail = document.getElementById('topAvailCash');
+    if (topTotal) topTotal.textContent = fmt(totalValue, 0);
+    if (topPos) topPos.textContent = fmt(posValue, 0);
+    if (topAvail) topAvail.textContent = fmt(this.sim.account.cash, 0);
+
+    document.getElementById('acctTotal').textContent = fmt(totalValue, 0);
+    document.getElementById('acctCash').textContent = fmt(this.sim.account.cash, 0);
+    document.getElementById('acctPosValue').textContent = fmt(posValue, 0);
+
+    const floatEl = document.getElementById('acctFloatPnl');
+    floatEl.textContent = (floatPnl >= 0 ? '+' : '') + fmt(floatPnl);
+    floatEl.style.color = floatPnl >= 0 ? '#f85149' : '#3fb950';
+
+    const realEl = document.getElementById('acctRealizedPnl');
+    realEl.textContent = (this.sim.account.realizedPnl >= 0 ? '+' : '') + fmt(this.sim.account.realizedPnl);
+    realEl.style.color = this.sim.account.realizedPnl >= 0 ? '#f85149' : '#3fb950';
+
+    const totalEl = document.getElementById('acctTotalPnl');
+    totalEl.textContent = (totalPnl >= 0 ? '+' : '') + fmt(totalPnl);
+    totalEl.style.color = totalPnl >= 0 ? '#f85149' : '#3fb950';
+
+    const retEl = document.getElementById('acctReturn');
+    retEl.textContent = fmtPct(ret);
+    retEl.style.color = ret >= 0 ? '#f85149' : '#3fb950';
+
+    document.getElementById('availCash').textContent = fmt(this.sim.account.cash, 0);
+
+    // Update available shares for sell
+    const pos = this.sim.account.positions[this.sim.symbol];
+    const availShares = pos ? pos.available : 0;
+    const availSharesEl = document.getElementById('availShares');
+    if (availSharesEl) availSharesEl.textContent = fmtInt(availShares);
+
+    // Update label based on active tab
+    const availLabel = document.getElementById('availLabel');
+    if (availLabel) {
+      availLabel.textContent = this.activeTab === 'buy' ? '可用资金' : '可用持仓';
+    }
+    const availCashEl = document.getElementById('availCash');
+    if (availCashEl) {
+      if (this.activeTab === 'buy') {
+        availCashEl.textContent = fmt(this.sim.account.cash, 0);
+      } else {
+        availCashEl.textContent = fmtInt(availShares) + ' 股';
+      }
+    }
+
+    // Ammo
+    document.getElementById('ammoValue').textContent =
+      `${fmtInt(this.sim.account.ammo)} / ${fmtInt(this.sim.account.maxAmmo)}`;
+    document.getElementById('ammoFill').style.width =
+      (this.sim.account.ammo / this.sim.account.maxAmmo * 100) + '%';
+
+    // Chart info
+    const candles = this.sim.klineAgg.getAll();
+    if (candles.length > 0) {
+      const last = candles[candles.length - 1];
+      document.getElementById('ciOpen').textContent = last.open.toFixed(2);
+      document.getElementById('ciHigh').textContent = last.high.toFixed(2);
+      document.getElementById('ciLow').textContent = last.low.toFixed(2);
+      document.getElementById('ciClose').textContent = last.close.toFixed(2);
+      document.getElementById('ciVol').textContent = fmtInt(last.volume);
+    }
+  }
+
+  updatePositions() {
+    const tbody = document.getElementById('positionsBody');
+    let html = '';
+
+    for (const sym in this.sim.account.positions) {
+      const pos = this.sim.account.positions[sym];
+      if (pos.qty === 0 && !this.sim.account.orders.some(o => o.symbol === sym)) continue;
+      const inst = INSTRUMENTS[sym];
+      const curPrice = this.currentPrices[sym] || 0;
+      const floatPnl = (curPrice - pos.avgCost) * pos.qty;
+      const pnlPct = pos.avgCost > 0 ? (curPrice - pos.avgCost) / pos.avgCost : 0;
+      const cls = floatPnl >= 0 ? 'pos-profit' : 'pos-loss';
+      const frozen = pos.frozen || 0;
+
+      html += `<tr>
+        <td>${inst.name}</td>
+        <td style="color:#f85149">多头</td>
+        <td>${fmtInt(pos.qty)}</td>
+        <td>${fmtInt(pos.available)}</td>
+        <td>${fmtInt(frozen)}</td>
+        <td>${pos.avgCost.toFixed(2)}</td>
+        <td>${curPrice.toFixed(2)}</td>
+        <td class="${cls}">${floatPnl >= 0 ? '+' : ''}${fmt(floatPnl)}</td>
+        <td class="${cls}">${fmtPct(pnlPct)}</td>
+      </tr>`;
+    }
+
+    if (html === '') {
+      html = '<tr><td colspan="9" style="text-align:center;color:#6e7681;padding:20px">暂无持仓</td></tr>';
+    }
+
+    tbody.innerHTML = html;
+  }
+
+  updateOrders() {
+    const tbody = document.getElementById('ordersBody');
+    let html = '';
+    const orders = [...this.sim.account.orders].reverse().slice(0, 50);
+
+    for (const o of orders) {
+      const inst = INSTRUMENTS[o.symbol];
+      const statusText = o.status === 'filled' ? '已成交' : o.status === 'cancelled' ? '已撤单' : '挂单中';
+      const statusCls = o.status === 'filled' ? 'ord-status-filled' :
+                        o.status === 'cancelled' ? 'ord-status-cancelled' : 'ord-status-pending';
+      const cancelBtn = o.status === 'pending' ?
+        `<button class="cancel-btn" onclick="ui.cancelOrder('${o.id}')">撤单</button>` : '';
+
+      const time = new Date(o.ts);
+      const timeStr = `${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}:${String(time.getSeconds()).padStart(2, '0')}`;
+
+      html += `<tr>
+        <td>${timeStr}</td>
+        <td>${inst ? inst.name : o.symbol}</td>
+        <td style="color:${o.side === 'buy' ? '#f85149' : '#3fb950'}">${o.side === 'buy' ? '买入' : '卖出'}</td>
+        <td>${o.price.toFixed(2)}</td>
+        <td>${fmtInt(o.qty)}</td>
+        <td>${fmtInt(o.filledQty)}</td>
+        <td class="${statusCls}">${statusText}</td>
+        <td>${cancelBtn}</td>
+      </tr>`;
+    }
+
+    if (html === '') {
+      html = '<tr><td colspan="8" style="text-align:center;color:#6e7681;padding:20px">暂无委托</td></tr>';
+    }
+
+    tbody.innerHTML = html;
+  }
+
+  updateForum() {
+    const list = document.getElementById('forumList');
+    let html = '';
+    const posts = this.sim.forumNews.forumPosts.slice(0, 30);
+
+    for (const p of posts) {
+      const timeStr = `${String(p.time.getHours()).padStart(2, '0')}:${String(p.time.getMinutes()).padStart(2, '0')}`;
+      const sentText = p.sentiment === 'bullish' ? '看多' : p.sentiment === 'bearish' ? '看空' : '中性';
+      html += `<div class="forum-post">
+        <div class="fp-header">
+          <div class="fp-avatar" style="background:${p.color}">${p.avatar}</div>
+          <span class="fp-author">${p.author}</span>
+          <span class="fp-time">${timeStr}</span>
+          <span class="fp-sentiment ${p.sentiment}">${sentText}</span>
+        </div>
+        <div class="fp-content">${p.content}</div>
+      </div>`;
+    }
+
+    if (html === '') {
+      html = '<div style="text-align:center;color:#6e7681;padding:20px">论坛暂无帖子</div>';
+    }
+
+    list.innerHTML = html;
+  }
+
+  updateNews() {
+    const list = document.getElementById('newsList');
+    let html = '';
+    const news = this.sim.forumNews.newsItems.slice(0, 30);
+
+    for (const n of news) {
+      const timeStr = `${String(n.time.getHours()).padStart(2, '0')}:${String(n.time.getMinutes()).padStart(2, '0')}`;
+      const tagText = n.tag === 'hot' ? '热点' : n.tag === 'warn' ? '预警' : '资讯';
+      html += `<div class="news-item">
+        <span class="news-time">${timeStr}</span>
+        <span class="news-content"><span class="news-tag ${n.tag}">${tagText}</span>${n.text}</span>
+      </div>`;
+    }
+
+    if (html === '') {
+      html = '<div style="text-align:center;color:#6e7681;padding:20px">暂无新闻</div>';
+    }
+
+    list.innerHTML = html;
+  }
+
+  updateKPI() {
+    const totalValue = this.sim.account.getPortfolioValue(this.currentPrices);
+    const kpiResult = this.sim.kpi.update(totalValue);
+    const detail = document.getElementById('kpiDetail');
+
+    const progress = (this.sim.kpi.dayCount / this.sim.kpi.totalDays) * 100;
+    const targetProgress = Math.min(100, Math.max(0, (kpiResult.annualized / this.sim.kpi.target) * 100));
+    const barColor = kpiResult.annualized >= this.sim.kpi.target ? '#3fb950' :
+                     kpiResult.annualized >= 0 ? '#d29922' : '#f85149';
+
+    detail.innerHTML = `
+      <div class="kpi-row">
+        <span class="kpi-label">KPI目标（年化收益率）</span>
+        <span class="kpi-value" style="color:var(--yellow)">${(this.sim.kpi.target * 100).toFixed(1)}%</span>
+      </div>
+      <div class="kpi-row">
+        <span class="kpi-label">当前年化收益率</span>
+        <span class="kpi-value" style="color:${kpiResult.annualized >= this.sim.kpi.target ? '#3fb950' : kpiResult.annualized >= 0 ? '#d29922' : '#f85149'}">${fmtPct(kpiResult.annualized)}</span>
+      </div>
+      <div class="kpi-row">
+        <span class="kpi-label">当前累计收益率</span>
+        <span class="kpi-value">${fmtPct(kpiResult.ret)}</span>
+      </div>
+      <div class="kpi-row">
+        <span class="kpi-label">最大回撤</span>
+        <span class="kpi-value" style="color:#f85149">${(kpiResult.maxDrawdown * 100).toFixed(2)}%</span>
+      </div>
+      <div class="kpi-row">
+        <span class="kpi-label">交易日进度</span>
+        <span class="kpi-value">${this.sim.kpi.dayCount} / ${this.sim.kpi.totalDays} 天</span>
+      </div>
+      <div class="kpi-row">
+        <span class="kpi-label">总资产</span>
+        <span class="kpi-value">${fmt(totalValue, 0)}</span>
+      </div>
+      <div class="kpi-row">
+        <span class="kpi-label">今日成交笔数</span>
+        <span class="kpi-value">${this.sim.tradeCount}</span>
+      </div>
+      <div style="margin-top:16px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">KPI达成进度</div>
+        <div class="kpi-progress">
+          <div class="kpi-progress-bar" style="width:${targetProgress}%;background:${barColor}"></div>
+          <div class="kpi-target-line" style="left:100%"></div>
+        </div>
+        <div class="kpi-desc">
+          目标线为年化${(this.sim.kpi.target * 100).toFixed(0)}%。未达标将被考核。
+          交易日进度已过 ${progress.toFixed(1)}%。
+        </div>
+      </div>
+    `;
+  }
+
+  cancelOrder(orderId) {
+    this.sim.cancelPlayerOrder(orderId);
+    this.updateAll();
+  }
+
+  switchTab(tab) {
+    this.activeTab = tab;
+    const buyTab = document.getElementById('tabBuy');
+    const sellTab = document.getElementById('tabSell');
+    const btn = document.getElementById('btnPlaceOrder');
+
+    if (tab === 'buy') {
+      buyTab.className = 'oe-tab active-buy';
+      sellTab.className = 'oe-tab';
+      btn.className = 'oe-btn buy';
+      btn.textContent = '买入下单';
+    } else {
+      buyTab.className = 'oe-tab';
+      sellTab.className = 'oe-tab active-sell';
+      btn.className = 'oe-btn sell';
+      btn.textContent = '卖出下单';
+    }
+    // Update available info display
+    this.updateAccount();
+  }
+
+  switchPane(pane) {
+    this.activePane = pane;
+    document.querySelectorAll('.bp-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.bp-tab[data-pane="${pane}"]`).classList.add('active');
+    document.querySelectorAll('.bp-pane').forEach(p => p.classList.remove('active'));
+    document.getElementById('pane-' + pane).classList.add('active');
+  }
+}
+
+// ============================================================
+//  Game End
+// ============================================================
+// ============================================================
+//  Main
+// ============================================================
+let sim, chart, ui;
+let simTimer = null;
+
+function init() {
+  sim = new MarketSimulator();
+  chart = new KLineChart('klineCanvas', sim);
+  ui = new UIController(sim, chart);
+
+  // Tool buttons - draw/trade modes removed (now: left=pan, right=draw)
+  document.getElementById('toolDraw').addEventListener('click', () => {
+    chart.autoScroll = true;
+    showToast('已切换到自动滚动（跟踪最新）', 'success');
+  });
+
+  document.getElementById('toolTrade').addEventListener('click', () => {
+    chart.autoScroll = false;
+    showToast('已切换到手动浏览（左键拖动平移）', 'success');
+  });
+
+  document.getElementById('toolClearDraw').addEventListener('click', () => {
+    sim.clearDrawPath();
+    chart.drawPoints = [];
+    showToast('已清除绘制路径', 'warn');
+  });
+
+  document.getElementById('toolPause').addEventListener('click', () => {
+    sim.isPaused = !sim.isPaused;
+    showToast(sim.isPaused ? '模拟已暂停' : '模拟已继续', 'warn');
+  });
+
+  document.getElementById('toolReset').addEventListener('click', () => {
+    sim.reset();
+    chart.drawPoints = [];
+    showToast('模拟已重置', 'success');
+    ui.updateAll();
+  });
+
+  // Instrument select
+  document.getElementById('instrumentSelect').addEventListener('change', (e) => {
+    sim.switchInstrument(e.target.value);
+    chart.drawPoints = [];
+    showToast(`已切换到 ${INSTRUMENTS[e.target.value].name}`, 'success');
+    ui.updateAll();
+  });
+
+  // Speed control
+  document.querySelectorAll('.speed-ctrl button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.speed-ctrl button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      sim.tickInterval = parseInt(btn.dataset.speed);
+      restartTimer();
+    });
+  });
+
+  // Timeframe - now supports 分时/日K/周K/月K
+  document.querySelectorAll('.tf-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      sim.chartTimeframe = btn.dataset.tf;
+      chart.autoScroll = true;
+      chart.scrollOffset = 0;
+    });
+  });
+
+  // Order entry tabs
+  document.getElementById('tabBuy').addEventListener('click', () => ui.switchTab('buy'));
+  document.getElementById('tabSell').addEventListener('click', () => ui.switchTab('sell'));
+
+  // Quick quantity buttons
+  document.querySelectorAll('.oq-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('orderQty').value = btn.dataset.qty;
+    });
+  });
+
+  // Place order
+  document.getElementById('btnPlaceOrder').addEventListener('click', () => {
+    const price = parseFloat(document.getElementById('orderPrice').value);
+    const qty = parseInt(document.getElementById('orderQty').value);
+    const side = ui.activeTab;
+
+    if (!price || price <= 0) { showToast('请输入有效价格', 'error'); return; }
+    if (!qty || qty < CONFIG.lotSize) { showToast(`最小委托数量${CONFIG.lotSize}股`, 'error'); return; }
+    if (qty % CONFIG.lotSize !== 0) { showToast(`委托数量须为${CONFIG.lotSize}的整数倍`, 'error'); return; }
+
+    // Check available shares for sell (T+1)
+    if (side === 'sell') {
+      const pos = sim.account.positions[sim.symbol];
+      const avail = pos ? pos.available : 0;
+      if (qty > avail) {
+        showToast(`可用持仓不足（可用${fmtInt(avail)}股，含T+1冻结）`, 'error');
+        return;
+      }
+    }
+
+    sim.placePlayerOrder(side, price, qty);
+    ui.updateAll();
+  });
+
+  // Bottom panel tabs
+  document.querySelectorAll('.bp-tab').forEach(tab => {
+    tab.addEventListener('click', () => ui.switchPane(tab.dataset.pane));
+  });
+
+  // Right panel toggle (order book / chip distribution)
+  document.querySelectorAll('.rp-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.rp-toggle-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const target = btn.dataset.rp;
+      document.getElementById('rpOrderBook').style.display = target === 'orderbook' ? '' : 'none';
+      document.getElementById('rpChipDist').style.display = target === 'chipdist' ? '' : 'none';
+    });
+  });
+
+  // Next day button (toolbar)
+  document.getElementById('toolNextDay').addEventListener('click', () => {
+    sim.nextDay();
+    chart.drawPoints = [];
+    showToast(`第${sim.kpi.dayCount}个交易日开始`, 'success');
+    ui.updateAll();
+  });
+
+  // Initial update
+  ui.updateAll();
+
+  // Start simulation
+  restartTimer();
+
+  // Render loop
+  function renderLoop() {
+    ui.updateAll();
+    requestAnimationFrame(renderLoop);
+  }
+  renderLoop();
+}
+
+function restartTimer() {
+  if (simTimer) clearInterval(simTimer);
+  simTimer = setInterval(() => {
+    sim.tick();
+  }, sim.tickInterval);
+}
+
+// Start
+window.addEventListener('load', init);
+</script>
+</body>
+</html>
