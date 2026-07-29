@@ -67,8 +67,10 @@ TradingSim v0.2 是一个基于 Canvas 的单文件证券交易模拟器。本�
 
 ### 3.1 项目结构
 
+以下结构在现有 `trading-simulator-demo/` 目录下创建：
+
 ```
-trading-simulator/
+trading-simulator-demo/
 ├── server/                    # 后端 - Node.js + TypeScript
 │   ├── src/
 │   │   ├── index.ts           # 入口，启动服务器
@@ -366,6 +368,7 @@ generateOrder(agent: RetailAgent, emotionIndex: number) {
 GET  /api/klines/:symbol?period=1m|5m|day|week&count=200   # 历史K线
 GET  /api/account                                            # 账户全量状态
 GET  /api/orders?status=active|filled|cancelled              # 委托列表
+GET  /api/orders/:id                                          # 单笔委托详情
 GET  /api/trades?limit=100                                   # 成交记录
 GET  /api/instruments                                        # 标的列表
 GET  /api/config                                             # 配置参数
