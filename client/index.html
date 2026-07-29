@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TradingSim 交易模拟器</title>
+  <link rel="stylesheet" href="./src/styles.css">
+</head>
+<body>
+  <div id="app">
+    <!-- ==================== Top Bar ==================== -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <span class="logo">TradingSim</span>
+        <select id="symbol-select"></select>
+        <div class="tf-tabs">
+          <button class="tf-tab active" data-tf="5">分时</button>
+          <button class="tf-tab" data-tf="day">日K</button>
+          <button class="tf-tab" data-tf="week">周K</button>
+          <button class="tf-tab" data-tf="month">月K</button>
+        </div>
+      </div>
+      <div class="topbar-center">
+        <span id="price-display" class="price-val">--</span>
+        <span id="change-display" class="change-val">--</span>
+        <span id="vol-display" class="vol-val">--</span>
+      </div>
+      <div class="topbar-right">
+        <div class="speed-ctrl">
+          <button class="speed-btn active" data-speed="1">1x</button>
+          <button class="speed-btn" data-speed="2">2x</button>
+          <button class="speed-btn" data-speed="4">4x</button>
+          <button class="speed-btn" data-speed="10">10x</button>
+        </div>
+        <button id="btn-next-day" class="btn-action">次日</button>
+        <button id="btn-reset" class="btn-action warn">重置</button>
+        <span id="conn-status" class="conn-status connecting">连接中...</span>
+      </div>
+    </header>
+
+    <!-- ==================== Main Area ==================== -->
+    <main class="main-area">
+      <!-- K-line Chart -->
+      <div class="chart-container">
+        <canvas id="kline-canvas"></canvas>
+        <div class="chart-overlay">
+          <div class="chart-info-left">
+            <span id="chart-symbol" class="chart-symbol">--</span>
+            <span id="chart-limit" class="chart-limit"></span>
+            <span id="chart-day" class="chart-day"></span>
+          </div>
+          <div class="chart-info-right">
+            <span class="ma-legend"><span class="dot ma5"></span>MA5</span>
+            <span class="ma-legend"><span class="dot ma20"></span>MA20</span>
+            <span id="draw-hint" class="draw-hint">右键拖动绘制主力路径</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Panel -->
+      <aside class="right-panel">
+        <!-- Account Overview -->
+        <section class="rp-section" id="sec-account">
+          <div class="rp-title">账户概览</div>
+          <div class="account-grid">
+            <div class="acc-item"><span class="acc-label">总资产</span><span class="acc-val" id="acc-total">--</span></div>
+            <div class="acc-item"><span class="acc-label">可用资金</span><span class="acc-val" id="acc-cash">--</span></div>
+            <div class="acc-item"><span class="acc-label">持仓市值</span><span class="acc-val" id="acc-position">--</span></div>
+            <div class="acc-item"><span class="acc-label">浮动盈亏</span><span class="acc-val" id="acc-pnl">--</span></div>
+            <div class="acc-item"><span class="acc-label">已实现盈亏</span><span class="acc-val" id="acc-realized">--</span></div>
+            <div class="acc-item"><span class="acc-label">主力筹码</span><span class="acc-val" id="acc-ammo">--</span></div>
+          </div>
+        </section>
+
+        <!-- Order Entry -->
+        <section class="rp-section" id="sec-order">
+          <div class="rp-title">委托下单</div>
+          <div class="order-form">
+            <div class="form-row">
+              <div class="side-toggle">
+                <button id="side-buy" class="side-btn buy active">买入</button>
+                <button id="side-sell" class="side-btn sell">卖出</button>
+              </div>
+            </div>
+            <div class="form-row">
+              <label class="form-label">价格</label>
+              <input type="number" id="order-price" class="form-input" step="0.01" placeholder="0.00">
+            </div>
+            <div class="form-row">
+              <label class="form-label">数量(股)</label>
+              <input type="number" id="order-qty" class="form-input" step="100" placeholder="100">
+            </div>
+            <div class="form-row quick-qty">
+              <button class="qty-btn" data-qty="100">100</button>
+              <button class="qty-btn" data-qty="500">500</button>
+              <button class="qty-btn" data-qty="1000">1000</button>
+              <button class="qty-btn" data-qty="5000">5000</button>
+              <button class="qty-btn" data-qty="10000">万</button>
+            </div>
+            <div class="form-row">
+              <button id="btn-place-order" class="btn-submit buy">买入下单</button>
+            </div>
+            <div class="form-row">
+              <button id="btn-clear-path" class="btn-secondary">清除绘制路径</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Order Book -->
+        <section class="rp-section rp-flex" id="sec-orderbook">
+          <div class="rp-title">五档行情</div>
+          <div class="orderbook" id="orderbook"></div>
+        </section>
+      </aside>
+    </main>
+
+    <!-- ==================== Bottom Panel ==================== -->
+    <footer class="bottom-panel">
+      <div class="tab-bar">
+        <button class="tab active" data-tab="orders">委托</button>
+        <button class="tab" data-tab="trades">成交</button>
+        <button class="tab" data-tab="forum">论坛</button>
+        <button class="tab" data-tab="news">新闻</button>
+        <button class="tab" data-tab="kpi">KPI</button>
+        <button class="tab" data-tab="emotion">情绪</button>
+      </div>
+      <div class="tab-content">
+        <div id="tab-orders" class="tab-pane active">
+          <table class="data-table"><thead><tr>
+            <th>时间</th><th>方向</th><th>价格</th><th>数量</th><th>已成交</th><th>状态</th><th>操作</th>
+          </tr></thead><tbody id="orders-body"></tbody></table>
+        </div>
+        <div id="tab-trades" class="tab-pane">
+          <table class="data-table"><thead><tr>
+            <th>时间</th><th>方向</th><th>价格</th><th>数量</th><th>来源</th>
+          </tr></thead><tbody id="trades-body"></tbody></table>
+        </div>
+        <div id="tab-forum" class="tab-pane">
+          <div class="forum-list" id="forum-body"></div>
+        </div>
+        <div id="tab-news" class="tab-pane">
+          <div class="news-list" id="news-body"></div>
+        </div>
+        <div id="tab-kpi" class="tab-pane">
+          <div class="kpi-grid" id="kpi-body"></div>
+        </div>
+        <div id="tab-emotion" class="tab-pane">
+          <div class="emotion-panel" id="emotion-body"></div>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Toast container -->
+    <div id="toast-container"></div>
+  </div>
+
+  <script type="module" src="./src/main.ts"></script>
+</body>
+</html>
