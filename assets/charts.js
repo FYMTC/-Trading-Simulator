@@ -36,18 +36,18 @@ mermaid.initialize({
 
   var phases = [
     { name: 'P1 基础架构', start: 1, end: 4, color: accent },
-    { name: 'P2 核心玩法', start: 5, end: 10, color: accent },
-    { name: 'P3 市场仿真', start: 11, end: 16, color: accent2 },
-    { name: 'P4 AI优化与平衡', start: 17, end: 22, color: yellow },
-    { name: 'P5 内容与发布', start: 23, end: 26, color: green }
+    { name: 'P2 核心玩法', start: 5, end: 9, color: accent },
+    { name: 'P3 市场仿真', start: 10, end: 14, color: accent2 },
+    { name: 'P4 并行优化与打磨', start: 15, end: 19, color: yellow },
+    { name: 'P5 测试与发布', start: 20, end: 22, color: green }
   ];
 
   var milestones = [
     { name: 'K线实时更新', week: 4, phase: 'P1' },
-    { name: '最小可玩闭环', week: 10, phase: 'P2' },
-    { name: '市场仿真上线', week: 16, phase: 'P3' },
-    { name: '60fps稳定运行', week: 22, phase: 'P4' },
-    { name: '可发布版本', week: 26, phase: 'P5' }
+    { name: '最小可玩闭环', week: 9, phase: 'P2' },
+    { name: '市场仿真上线', week: 14, phase: 'P3' },
+    { name: '1000代理流畅运行', week: 19, phase: 'P4' },
+    { name: '可发布版本', week: 22, phase: 'P5' }
   ];
 
   chartTimeline.setOption({
@@ -62,7 +62,7 @@ mermaid.initialize({
     xAxis: {
       type: 'value',
       min: 0,
-      max: 27,
+      max: 23,
       interval: 2,
       axisLine: { lineStyle: { color: rule } },
       axisLabel: {

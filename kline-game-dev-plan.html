@@ -416,9 +416,9 @@ footer {
 <!-- ==================== COVER ==================== -->
 <header class="cover">
   <div class="container">
-    <span class="tag">DEV PLAN · v0.1</span>
+    <span class="tag">DEV PLAN · v0.2</span>
     <h1>主力资金K线操控模拟游戏<br>开发计划</h1>
-    <p class="subtitle">玩家扮演股市主力资金，在K线图上绘制目标走势，AI交易代理负责使用账户筹码在仿真市场中控盘，在散户与其他主力的博弈中实现超额收益。</p>
+    <p class="subtitle">玩家扮演机构交易员，在K线图上绘制目标走势，机器根据K线方向自动下单（画高买入、画低卖出），所有订单在证券交易所撮合。纯仿真市场，无AI预测。可用筹码清零则日内无法操作。未完成领导设定的年化收益率KPI即被开除。</p>
     <div class="meta">
       <div class="meta-item">
         <span class="meta-label">技术栈</span>
@@ -426,7 +426,7 @@ footer {
       </div>
       <div class="meta-item">
         <span class="meta-label">预计周期</span>
-        <span class="meta-value">26 周</span>
+        <span class="meta-value">22 周</span>
       </div>
       <div class="meta-item">
         <span class="meta-label">目标平台</span>
@@ -463,44 +463,54 @@ footer {
     <h2>项目概述与核心玩法</h2>
 
     <h3>游戏概念</h3>
-    <p>这是一款融合<strong>金融市场仿真</strong>与<strong>策略操控</strong>的模拟游戏。玩家扮演股市中的主力资金（庄家/机构大户），核心交互方式是在K线图上直接绘制期望的未来K线走势——相当于向AI交易代理下达"价格走势指令"。AI代理随即根据玩家账户中的可用筹码和持仓情况，在仿真市场中自动执行买卖操作，试图将标的股票的实际K线推向玩家绘制的目标轨迹。</p>
-    <p>市场的另一侧是大量仿真散户和其他主力资金。散户会根据价格变化做出追涨杀跌、止损、抄底等真实市场中的典型反应；其他主力则有自己的操控意图，可能与玩家形成竞争。玩家面临的挑战是：<strong>在控盘成本和市场冲击之间取得平衡，既要让K线贴合目标，又要在过程中低买高卖实现超额收益</strong>。</p>
+    <p>这是一款<strong>纯仿真市场</strong>的交易模拟游戏，没有关卡设计，没有AI价格预测，核心是一个连续的交易日循环。玩家扮演机构交易员，领导设定了年化收益率KPI目标——完不成就被开除，游戏直接结束。</p>
+    <p>核心交互极简：<strong>玩家在K线图上画线，机器根据K线方向自动下单</strong>。画高就下买单（推动价格上涨），画低就下卖单（推动价格下跌）。所有订单发送到证券交易所的撮合引擎完成成交，与散户和其他主力的订单在同一订单簿中竞争。玩家的可用筹码（现金）是有限资源——买入消耗筹码，卖出回收筹码（需要先有持仓）。<strong>可用筹码清零则当日无法再下买单</strong>，只能眼睁睁看着市场波动。</p>
+    <p>市场是完全仿真的：大量散户代理根据价格变化做出追涨杀跌、止损、抄底等真实反应，其他主力代理有独立的操盘意图。没有任何AI预测价格走向——价格完全由订单簿中的供需关系决定。玩家面临的挑战是：<strong>在有限的筹码下管理买卖节奏，既要推动K线向期望方向走，又要在过程中低买高卖积累收益，最终达成年化收益率KPI</strong>。</p>
 
     <h3>核心玩法循环</h3>
     <figure class="diagram">
       <pre class="mermaid">
-flowchart LR
-    A["观察市场状态<br/>K线·成交量·散户行为"] --> B["绘制目标K线<br/>设定未来N根走势"]
-    B --> C["AI生成交易策略<br/>分解目标·评估冲击"]
-    C --> D["执行交易指令<br/>买入·卖出·撤单"]
-    D --> E["市场仿真演算<br/>散户反应·主力博弈"]
-    E --> F["更新K线与账户<br/>实际vs目标对比"]
-    F --> G{"达标且盈利?"}
-    G -->|否| A
-    G -->|是| H["结算超额收益<br/>进入下一关"]
+flowchart TD
+    subgraph Day["交易日循环"]
+        A["开盘·观察市场状态"] --> B["绘制K线走势<br/>画高=目标上涨 画低=目标下跌"]
+        B --> C{"机器下单逻辑"}
+        C -->|"画高 → 买单"| D1["发送买单至交易所"]
+        C -->|"画低 → 卖单"| D2["发送卖单至交易所"]
+        C -->|"可用筹码=0"| D3["无法下买单<br/>日内停止操作"]
+        D1 --> E["交易所撮合<br/>限价订单簿·价格时间优先"]
+        D2 --> E
+        E --> F["散户·主力并行反应"]
+        F --> G["更新K线·成交量·账户"]
+        G --> H{"日内交易时间结束?"}
+        H -->|否| A
+        H -->|是| I["日终结算"]
+    end
+    I --> J{"年化收益率 ≥ KPI目标?"}
+    J -->|是| K["继续下一交易日"]
+    J -->|否| L["被开除<br/>游戏结束"]
       </pre>
-      <figcaption>图 1：核心玩法循环</figcaption>
+      <figcaption>图 1：核心玩法循环 — 纯交易日循环，KPI考核驱动</figcaption>
     </figure>
 
-    <p>每一轮循环对应一个K线周期（如1分钟、5分钟或日线）。玩家在周期开始前绘制目标K线，AI代理在周期内自动执行交易，仿真引擎实时演算市场反应。周期结束后，系统对比实际K线与目标K线的偏差，同时计算玩家的盈亏。偏差越小、收益越高，得分越高。</p>
+    <p>每个交易日从开盘到收盘是一个完整循环。玩家在交易时间内反复"画线→机器下单→市场反应→更新账户"。日内可用筹码耗尽则无法再下买单，只能等待卖出机会回收筹码。日终结算时检查年化收益率是否达到KPI目标，不达标即游戏结束。这种设计让每个交易日都有紧迫感——筹码管理失误可能导致整周收益归零。</p>
 
     <h3>设计理念</h3>
     <div class="card-grid">
       <div class="card">
-        <h4>真实感优先</h4>
-        <p>市场行为参数参考真实A股数据校准。散户的追涨杀跌比例、止损阈值、成交量分布都应贴近现实，让玩家感受到真实的市场阻力。</p>
+        <h4>纯仿真市场</h4>
+        <p>没有AI预测价格走向。所有价格变动完全由订单簿中的买卖订单撮合产生。散户、主力、做市商的行为都是独立的交易决策，不是预设脚本。市场走向不可预测，只能通过自己的订单去影响。</p>
       </div>
       <div class="card">
-        <h4>策略深度</h4>
-        <p>控盘不是简单的"想涨就买"。大量买入会推高成本，散户跟风会增加不确定性，其他主力的反向操作会直接破坏走势。玩家需要在多重约束下做权衡。</p>
+        <h4>筹码管理即策略</h4>
+        <p>可用筹码是核心资源约束。画高需要买入消耗筹码，画低需要卖出回收筹码（需先有持仓）。筹码清零则日内无法操作。玩家必须在"推动价格"和"保留弹药"之间做取舍。</p>
       </div>
       <div class="card">
-        <h4>专业UI体验</h4>
-        <p>界面对标主流证券交易软件（如同花顺、东方财富），K线图、五档盘口、资金流向一应俱全，让玩家有"真正在操盘"的沉浸感。</p>
+        <h4>KPI压力驱动</h4>
+        <p>没有评分系统，取而代之的是领导设定的年化收益率KPI。达不成就被开除——这是唯一的游戏结束条件。KPI目标随时间推进逐步提高，玩家必须持续超额收益才能生存。</p>
       </div>
       <div class="card">
-        <h4>渐进难度</h4>
-        <p>从低流动性小盘股（容易控盘）到高流动性大盘股（难以控盘），从无竞争主力到多主力博弈，难度逐级递增。</p>
+        <h4>交易所级真实感</h4>
+        <p>所有订单走证券交易所撮合，价格优先时间优先。五档盘口、成交明细、涨跌停限制一应俱全。UI对标主流证券交易软件，让玩家有真正在操盘的沉浸感。</p>
       </div>
     </div>
 
@@ -519,7 +529,7 @@ flowchart LR
     <h2>技术选型</h2>
 
     <h3>编程语言与运行时</h3>
-    <p>选择 <strong>C# + .NET 8</strong> 作为核心开发语言和运行时。C#在游戏开发和金融计算领域都有成熟的实践，类型安全和垃圾回收机制大幅降低内存管理负担，相比C++能将更多精力投入业务逻辑而非基础设施。.NET 8的AOT编译能力也能满足性能敏感场景的需求。</p>
+    <p>选择 <strong>C# + .NET 8</strong> 作为核心开发语言和运行时。本项目的核心技术挑战是<strong>大规模并行仿真</strong>——需要同时运行数百上千个交易者代理，每个代理独立维护账户状态并做出交易决策。C#的<code>ThreadPool</code>和<code>Parallel</code> API、<code>System.Threading.Channels</code>无锁管道、以及.NET 8对<code>Span&lt;T&gt;</code>和栈分配的优化，为高并发仿真提供了坚实基础。相比C++，C#的开发效率显著更高，而GC暂停可以通过对象池化和分代调优控制在可接受范围内。</p>
 
     <div class="table-wrap">
       <table>
@@ -529,20 +539,20 @@ flowchart LR
         <tbody>
           <tr>
             <td><strong>C# / .NET 8</strong></td>
-            <td>类型安全、GC、跨平台、丰富生态、AOT支持</td>
-            <td>运行时依赖（可通过AOT消除）</td>
+            <td>类型安全、并行生态成熟（ThreadPool/Channels/Span）、跨平台、AOT支持</td>
+            <td>GC暂停（可通过池化缓解）</td>
             <td style="color:var(--green);">采用</td>
           </tr>
           <tr>
             <td>C++ / Qt</td>
-            <td>极致性能、精细内存控制</td>
-            <td>开发效率低、内存安全风险、UI开发繁琐</td>
+            <td>极致性能、精细内存控制、无GC</td>
+            <td>开发效率低、内存安全风险、并发原语繁琐</td>
             <td style="color:var(--muted);">不采用</td>
           </tr>
           <tr>
-            <td>C# / Unity</td>
-            <td>游戏生态成熟、2D渲染强</td>
-            <td>UI Toolkit不适合数据密集型金融界面、引擎开销大</td>
+            <td>Rust / Tauri</td>
+            <td>内存安全、零成本抽象、无GC</td>
+            <td>UI生态不成熟、学习曲线陡峭、金融图表库匮乏</td>
             <td style="color:var(--muted);">不采用</td>
           </tr>
         </tbody>
@@ -550,8 +560,7 @@ flowchart LR
     </div>
 
     <h3>UI框架与图表渲染</h3>
-    <p>选择 <strong>Avalonia UI 11</strong> 作为桌面应用框架，配合 <strong>SkiaSharp</strong> 进行K线图的高性能自绘渲染。Avalonia是跨平台的XAML框架，原生支持MVVM模式，渲染管线基于Skia，与SkiaSharp无缝集成。相比WPF仅限Windows，Avalonia能同时覆盖三个主流桌面平台。</p>
-    <p>K线图是整个游戏最核心的可视化组件，需要支持实时更新、目标K线叠加、交互式绘制、多时间周期切换等复杂功能。市面上现成的金融图表库（如ScottPlot、OxyPlot）难以满足定制需求，因此采用SkiaSharp从零自绘，获得完全的渲染控制权。</p>
+    <p>选择 <strong>Avalonia UI 11</strong> 作为桌面应用框架，配合 <strong>SkiaSharp</strong> 进行K线图的高性能自绘渲染。Avalonia原生支持MVVM模式，渲染管线基于Skia，与SkiaSharp无缝集成，同时覆盖Windows/macOS/Linux三平台。K线图需要支持实时更新、目标K线叠加、交互式绘制等功能，采用SkiaSharp从零自绘获得完全的渲染控制权。</p>
 
     <div class="table-wrap">
       <table>
@@ -561,18 +570,20 @@ flowchart LR
         <tbody>
           <tr><td>应用框架</td><td>Avalonia UI 11</td><td>桌面UI、MVVM、跨平台</td></tr>
           <tr><td>图表渲染</td><td>SkiaSharp</td><td>K线图自绘、成交量图、技术指标</td></tr>
+          <tr><td>并行仿真</td><td>System.Threading.Channels</td><td>无锁管道、线程间订单/价格传递</td></tr>
+          <tr><td>任务并行</td><td>Parallel.ForEach + ThreadPool</td><td>批量代理评估、并行撮合</td></tr>
+          <tr><td>对象池</td><td>System.Buffers.ArrayPool&lt;T&gt;</td><td>订单/成交记录池化、减少GC</td></tr>
           <tr><td>DI容器</td><td>Microsoft.Extensions.DI</td><td>依赖注入、模块解耦</td></tr>
           <tr><td>日志</td><td>Serilog</td><td>结构化日志、调试与回放分析</td></tr>
-          <tr><td>数据持久化</td><td>SQLite + Dapper</td><td>游戏存档、配置、回放数据</td></tr>
-          <tr><td>单元测试</td><td>xUnit + Moq</td><td>仿真引擎与AI逻辑测试</td></tr>
-          <tr><td>JSON序列化</td><td>System.Text.Json</td><td>配置文件、存档读写</td></tr>
+          <tr><td>数据持久化</td><td>SQLite + Dapper</td><td>游戏存档、配置、交易日历史</td></tr>
+          <tr><td>单元测试</td><td>xUnit + Moq</td><td>撮合引擎与代理逻辑测试</td></tr>
         </tbody>
       </table>
     </div>
 
-    <h3>仿真引擎技术方案</h3>
-    <p>市场仿真引擎采用<strong>Agent-based建模</strong>（基于代理的建模）方案，自研而非使用现成库。原因在于：游戏对市场行为的可控性和可调参数有特殊需求——需要能精确调节散户的追涨比例、止损阈值、情绪敏感度等参数来实现难度曲线，这远超通用ABM框架（如MESA、NetLogo）的定制能力。</p>
-    <p>撮合引擎实现标准的<strong>连续限价订单簿</strong>（CLOB），价格优先、时间优先，支持市价单和限价单。每根K线周期内，所有代理的订单统一进入撮合队列，按时间序列逐笔成交。为保证实时性能，仿真引擎运行在独立线程，通过无锁队列与UI线程通信。</p>
+    <h3>并行仿真技术方案</h3>
+    <p>市场仿真引擎采用<strong>Agent-based建模</strong>方案，自研而非使用现成库。核心原因是游戏需要同时仿真大量交易者（数百到上千个散户代理 + 多个主力代理 + 做市商），每个代理独立维护账户状态、评估市场并下单。这对并行处理能力的要求极高——不是简单的多线程，而是需要在每个时间步内<strong>并行评估所有代理、批量收集订单、串行撮合、并行反馈结果</strong>的流水线。</p>
+    <p>撮合引擎实现标准的<strong>连续限价订单簿</strong>（CLOB），价格优先、时间优先。撮合本身是串行的（订单簿的全局一致性要求），但代理评估和结果反馈可以完全并行化。仿真引擎运行在独立线程组，通过<code>Channel&lt;T&gt;</code>无锁管道与UI线程通信。</p>
   </div>
 </section>
 
@@ -582,7 +593,7 @@ flowchart LR
     <span class="section-num">03 / ARCHITECTURE</span>
     <h2>系统架构</h2>
 
-    <p>整体采用五层架构，自上而下依次为表现层、游戏逻辑层、仿真引擎层、AI控制层和数据层。层间通过接口和事件总线解耦，仿真引擎在独立线程运行，UI线程通过数据绑定接收更新。</p>
+    <p>整体采用五层架构：表现层、游戏逻辑层、仿真引擎层、订单映射引擎和数据层。与前一版本的关键区别是：取消了AI控制层（无价格预测），替换为轻量的<strong>订单映射引擎</strong>——只做K线方向到订单方向的简单映射；取消了评分系统，替换为<strong>KPI考核系统</strong>。仿真引擎层是整个系统的性能瓶颈点，采用并行流水线架构。</p>
 
     <figure class="diagram">
       <pre class="mermaid">
@@ -590,92 +601,100 @@ flowchart TB
     subgraph PL["表现层 Presentation"]
         UI["Avalonia UI<br/>MVVM ViewModels"]
         Chart["SkiaSharp<br/>K线图控件"]
-        Panel["交易面板<br/>五档盘口·委托区"]
+        Panel["交易面板<br/>五档盘口·委托区·KPI仪表盘"]
     end
     subgraph GL["游戏逻辑层 Game Logic"]
         State["游戏状态管理"]
-        Diff["难度参数系统"]
-        Score["评分与结算"]
-        Turn["回合/时间推进"]
+        KPI["KPI考核系统<br/>年化收益率目标·开除判定"]
+        Day["交易日推进"]
     end
-    subgraph SE["仿真引擎层 Simulation"]
-        Match["撮合引擎<br/>限价订单簿"]
-        Agents["投资者代理池<br/>散户·主力·做市商"]
-        Events["市场事件系统"]
+    subgraph OM["订单映射引擎 Order Mapping"]
+        Mapper["K线→订单方向映射<br/>画高→买 画低→卖"]
+        Chip["筹码检查<br/>可用筹码>0方可下买单"]
+    end
+    subgraph SE["仿真引擎层 Simulation (并行)"]
+        Match["交易所撮合引擎<br/>限价订单簿·串行"]
+        Agents["投资者代理池 (并行)<br/>散户·主力·做市商"]
         Sent["情绪系统"]
-    end
-    subgraph AI["AI控制层 Control AI"]
-        Parser["K线目标解析"]
-        Strat["交易策略生成"]
-        Opt["执行优化器"]
-        Impact["市场冲击评估"]
     end
     subgraph DL["数据层 Data"]
         Save["存档系统"]
         Cfg["配置管理"]
-        Replay["回放系统"]
     end
 
     UI --> State
     Chart --> State
-    State --> Match
-    Parser --> Strat --> Opt --> Match
-    Agents --> Match
-    Events --> Agents
+    State --> Mapper
+    Mapper --> Chip
+    Chip -->|"通过"| Match
+    Chip -->|"筹码=0"| Block["拒绝买单<br/>日内无法操作"]
+    Agents -->|"并行下单"| Match
     Sent --> Agents
-    Match --> Price["价格·成交更新"]
+    Match -->|"串行撮合"| Price["价格·成交更新"]
     Price --> State
-    Price --> Agents
+    Price -->|"并行反馈"| Agents
     State --> Save
-    Cfg --> Diff
-    Diff --> Agents
+    Cfg --> KPI
+    Day --> KPI
       </pre>
-      <figcaption>图 3：系统五层架构与模块关系</figcaption>
+      <figcaption>图 3：系统五层架构 — 订单映射引擎替代AI控制层，仿真引擎并行化</figcaption>
     </figure>
 
-    <h3>线程模型与数据流</h3>
-    <p>系统运行三个核心线程：<strong>UI线程</strong>负责界面渲染和用户交互，<strong>仿真线程</strong>运行撮合引擎和所有投资者代理，<strong>AI线程</strong>运行价格控制AI的策略计算。线程间通过无锁环形缓冲区传递订单和价格更新，避免锁竞争。</p>
+    <h3>并行线程模型</h3>
+    <p>系统采用<strong>生产者-消费者</strong>并行模型，核心是三个通过<code>Channel&lt;T&gt;</code>连接的线程组：</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>线程组</th><th>职责</th><th>并行度</th><th>通信方式</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>UI线程</td><td>界面渲染、用户交互、K线绘制</td><td>1</td><td>数据绑定接收更新</td></tr>
+          <tr><td>订单映射线程</td><td>K线方向→订单方向、筹码检查</td><td>1</td><td>Channel输出订单</td></tr>
+          <tr><td>代理评估线程池</td><td>并行评估所有散户/主力代理</td><td>N (ThreadPool)</td><td>Channel收集订单</td></tr>
+          <tr><td>撮合线程</td><td>订单簿撮合（必须串行）</td><td>1</td><td>Channel输入订单、输出成交</td></tr>
+          <tr><td>反馈线程池</td><td>并行将成交结果分发回各代理</td><td>N (ThreadPool)</td><td>Channel输入成交</td></tr>
+        </tbody>
+      </table>
+    </div>
 
     <div class="callout">
       <div class="callout-title">数据流方向</div>
-      <p>玩家在UI线程绘制目标K线 → 目标序列传递到AI线程 → AI生成交易策略和订单 → 订单投递到仿真线程的撮合引擎 → 撮合结果（价格、成交）回传UI线程更新图表和账户面板。整个链路延迟目标控制在16ms以内（60fps刷新）。</p>
+      <p>玩家在UI线程绘制K线 → 订单映射线程将K线方向转为买/卖订单并检查筹码 → 订单通过Channel投递到撮合线程 → 同时，代理评估线程池并行评估所有散户/主力代理，生成的订单也投递到撮合线程 → 撮合线程串行处理所有订单，生成成交记录 → 成交记录通过Channel分发到反馈线程池，并行更新各代理账户 → 价格更新回传UI线程刷新图表和面板。每个时间步的流水线延迟目标控制在16ms以内。</p>
     </div>
 
     <h3>项目结构</h3>
-    <pre><code>KLineGame/
-├── KLineGame.UI/                  # Avalonia UI 项目（表现层）
-│   ├── ViewModels/                # MVVM ViewModel
-│   ├── Views/                     # XAML 视图
-│   └── Controls/                  # 自定义K线图控件
+    <pre><code>TradingSimulator/
+├── TradingSimulator.UI/              # Avalonia UI 项目（表现层）
+│   ├── ViewModels/                   # MVVM ViewModel
+│   ├── Views/                        # XAML 视图
+│   └── Controls/                     # 自定义K线图控件
 │
-├── KLineGame.Core/                # 游戏逻辑层
-│   ├── GameState.cs               # 游戏状态
-│   ├── DifficultySystem.cs        # 难度参数
-│   └── ScoringSystem.cs           # 评分结算
+├── TradingSimulator.Core/            # 游戏逻辑层
+│   ├── GameState.cs                  # 游戏状态
+│   ├── KPISystem.cs                  # KPI考核系统（年化收益率·开除判定）
+│   └── TradingDay.cs                 # 交易日推进
 │
-├── KLineGame.Simulation/          # 仿真引擎层
-│   ├── Matching/
-│   │   ├── OrderBook.cs           # 限价订单簿
-│   │   └── MatchingEngine.cs      # 撮合引擎
-│   ├── Agents/
-│   │   ├── IInvestorAgent.cs      # 代理接口
-│   │   ├── RetailAgents/          # 散户代理（6种类型）
-│   │   └── InstitutionalAgents/   # 机构代理
-│   ├── MarketEventSystem.cs       # 市场事件
-│   └── SentimentSystem.cs         # 情绪系统
+├── TradingSimulator.Simulation/      # 仿真引擎层（并行）
+│   ├── Exchange/                     # 证券交易所
+│   │   ├── OrderBook.cs              # 限价订单簿
+│   │   └── MatchingEngine.cs         # 撮合引擎（串行）
+│   ├── Agents/                       # 投资者代理池（并行评估）
+│   │   ├── IInvestorAgent.cs         # 代理接口
+│   │   ├── RetailAgents/             # 散户代理（6种类型）
+│   │   └── InstitutionalAgents/      # 机构代理（主力·做市商）
+│   ├── ParallelScheduler.cs          # 并行调度器（流水线编排）
+│   └── SentimentSystem.cs            # 情绪系统
 │
-├── KLineGame.AI/                  # AI控制层
-│   ├── TargetParser.cs            # K线目标解析
-│   ├── StrategyGenerator.cs       # 策略生成
-│   ├── ExecutionOptimizer.cs      # 执行优化
-│   └── ImpactModel.cs             # 市场冲击模型
+├── TradingSimulator.OrderMapping/    # 订单映射引擎
+│   ├── KLineToOrderMapper.cs         # K线→订单方向映射
+│   └── ChipChecker.cs                # 筹码检查
 │
-├── KLineGame.Data/                # 数据层
-│   ├── SaveSystem.cs              # 存档
-│   ├── ConfigManager.cs           # 配置
-│   └── ReplaySystem.cs            # 回放
+├── TradingSimulator.Data/            # 数据层
+│   ├── SaveSystem.cs                 # 存档
+│   └── ConfigManager.cs              # 配置
 │
-└── KLineGame.Tests/               # 单元测试</code></pre>
+└── TradingSimulator.Tests/           # 单元测试</code></pre>
   </div>
 </section>
 
@@ -700,120 +719,186 @@ flowchart TB
 
 public class TargetCandle
 {
-    public int Index { get; set; }            // 相对序列中的位置
+    public int Index { get; set; }            // 序列中的位置
     public decimal Open { get; set; }         // 目标开盘价
     public decimal High { get; set; }         // 目标最高价
     public decimal Low { get; set; }          // 目标最低价
     public decimal Close { get; set; }        // 目标收盘价（最关键）
-    public decimal Tolerance { get; set; }    // 允许偏差（百分比）
-    public TargetPriority Priority { get; set; } // 收盘价优先 / 区间优先
+    public OrderDirection ImpliedDirection    // 推导出的订单方向
+    {
+        get => Close > Open ? OrderDirection.Buy : OrderDirection.Sell;
+    }
 }</code></pre>
 
-    <p><code>Tolerance</code>字段定义了每根目标K线的容差范围。AI代理不需要精确命中目标价格，只需将实际价格控制在容差区间内即可判定达标。容差越小，难度越高，得分倍率也越高。这个机制让玩家可以自主选择"精确控盘但成本高"或"宽松控盘但成本低"的策略路线。</p>
+    <p>目标K线的核心信息是<strong>方向</strong>：收盘价高于开盘价（阳线）→ 机器下买单推动上涨；收盘价低于开盘价（阴线）→ 机器下卖单推动下跌。K线的形态细节（上下影线长度、实体比例等）影响订单的拆分节奏和下单量级，但不改变买卖方向。</p>
 
-    <!-- 4.2 价格控制AI -->
-    <h3>价格控制AI</h3>
-    <p>价格控制AI是游戏的技术核心。它接收玩家绘制的目标K线序列，输出一组交易指令，使实际K线尽可能贴合目标轨迹。本质上是一个<strong>带约束的序列优化问题</strong>：在可用筹码、持仓限制、市场冲击等多重约束下，找到最优的交易序列。</p>
+    <!-- 4.2 订单映射引擎 -->
+    <h3>订单映射引擎</h3>
+    <p>订单映射引擎是连接玩家意图和市场执行的桥梁，逻辑极简：<strong>画高→买单，画低→卖单，筹码=0→拒绝买单</strong>。不涉及任何价格预测或策略优化——机器只做方向映射和执行，市场走向完全由订单簿中的供需关系决定。</p>
 
-    <h4>三阶段实现路线</h4>
-    <div class="card-grid">
-      <div class="card">
-        <h4>Phase 1 · 规则引擎</h4>
-        <p>基于价格差和成交量的线性模型。目标价高于当前价 → 计算需要买入的量 → 分批下单。简单可靠，作为MVP基线。</p>
-      </div>
-      <div class="card">
-        <h4>Phase 2 · 模型预测控制</h4>
-        <p>滚动优化未来N步交易序列。每步根据市场反馈重新规划，平衡拟合度与成本。引入市场冲击模型预测交易对价格的影响。</p>
-      </div>
-      <div class="card">
-        <h4>Phase 3 · 强化学习</h4>
-        <p>在仿真环境中训练RL代理（PPO算法），学习在复杂市场条件下的最优控盘策略。能处理规则引擎难以覆盖的非线性场景。</p>
-      </div>
-      <div class="card">
-        <h4>市场冲击模型</h4>
-        <p>所有阶段共享的底层模型，量化单笔交易对价格的影响。参考Almgren-Chriss模型并针对游戏场景简化。</p>
-      </div>
-    </div>
-
-    <h4>市场冲击模型</h4>
-    <pre><code>// 简化的市场冲击模型：线性 + 平方根项
-public class ImpactModel
+    <pre><code>public class KLineToOrderMapper
 {
-    private readonly decimal _avgVolume;       // 近期平均成交量
-    private readonly decimal _baseImpact;      // 基础冲击系数
-    private readonly decimal _linearCoeff;     // 线性冲击系数
-    private readonly decimal _sqrtCoeff;       // 平方根冲击系数
+    private readonly TradingAccount _account;
 
-    public decimal EstimatePriceMove(decimal orderSize, bool isBuy)
+    /// <summary>
+    /// 将玩家绘制的目标K线转化为订单序列
+    /// </summary>
+    public List&lt;Order&gt; MapToOrders(TargetKLineSeries target, decimal currentPrice)
     {
-        var volumeRatio = orderSize / _avgVolume;
-        var impact = _baseImpact
-                   + _linearCoeff * volumeRatio
-                   + _sqrtCoeff * (decimal)Math.Sqrt((double)volumeRatio);
+        var orders = new List&lt;Order&gt;();
 
-        return isBuy ? impact : -impact;
+        foreach (var candle in target.Candles)
+        {
+            var direction = candle.ImpliedDirection;
+
+            if (direction == OrderDirection.Buy)
+            {
+                // 画高 → 买单：检查可用筹码
+                if (_account.Cash &lt;= 0)
+                {
+                    // 筹码清零，日内无法下买单
+                    break;
+                }
+                var orderVolume = CalculateOrderVolume(candle, currentPrice, _account.Cash);
+                orders.Add(new Order
+                {
+                    Direction = OrderDirection.Buy,
+                    Type = OrderType.Limit,
+                    Price = candle.Close,        // 限价买单挂在目标价
+                    Volume = orderVolume,
+                    Symbol = target.Symbol
+                });
+            }
+            else
+            {
+                // 画低 → 卖单：检查持仓
+                if (_account.Position &lt;= 0)
+                {
+                    // 无持仓可卖，跳过
+                    continue;
+                }
+                var sellVolume = Math.Min(
+                    CalculateOrderVolume(candle, currentPrice, _account.Position * currentPrice),
+                    _account.Position
+                );
+                orders.Add(new Order
+                {
+                    Direction = OrderDirection.Sell,
+                    Type = OrderType.Limit,
+                    Price = candle.Close,        // 限价卖单挂在目标价
+                    Volume = sellVolume,
+                    Symbol = target.Symbol
+                });
+            }
+        }
+        return orders;
     }
 
-    // 预估将价格从 currentPrice 推到 targetPrice 所需的订单量
-    public decimal EstimateRequiredVolume(decimal currentPrice, decimal targetPrice, decimal avgVolume)
+    // 根据K线幅度和可用资金计算下单量
+    private decimal CalculateOrderVolume(TargetCandle candle, decimal currentPrice, decimal available)
     {
-        var priceDiff = targetPrice - currentPrice;
-        // 反向求解：给定目标价格变动，估算所需交易量
-        // 简化为线性近似，MPC阶段使用精确数值方法
-        var requiredImpact = priceDiff / currentPrice;
-        return requiredImpact * avgVolume / _linearCoeff;
+        var priceChangeRatio = Math.Abs((candle.Close - currentPrice) / currentPrice);
+        // 幅度越大，下单量越大（但有上限防止筹码瞬间耗尽）
+        var maxVolume = available * 0.2m / currentPrice;  // 单笔最多用20%可用资金
+        var targetVolume = available * priceChangeRatio * 2m / currentPrice;
+        return Math.Min(targetVolume, maxVolume);
     }
 }</code></pre>
 
-    <p>冲击模型的关键参数（<code>_baseImpact</code>、<code>_linearCoeff</code>、<code>_sqrtCoeff</code>）会根据标的股票的流动性和难度等级动态调整。流动性好的大盘股冲击系数小，玩家需要更大的资金量才能推动价格；流动性差的小盘股冲击系数大，少量资金就能显著影响价格，但同时也更容易被其他主力察觉和干扰。</p>
+    <p>订单映射的关键设计点是<strong>筹码约束</strong>。买单会消耗可用筹码（现金），卖单需要先有持仓。当可用筹码清零时，机器无法再下买单，玩家画高的指令无法执行——日内只能等待价格回落触发持仓止损卖出回收筹码，或者等待下一个交易日。这个约束让筹码管理成为核心策略维度：<strong>不能一味画高买入，必须在合适时机画低卖出回收筹码</strong>，否则会在关键时刻"弹尽粮绝"。</p>
+
+    <div class="callout">
+      <div class="callout-title">所有订单走交易所</div>
+      <p>玩家的订单与散户、主力的订单进入同一个交易所撮合引擎。买单需要排队等待卖单匹配，卖单需要排队等待买单匹配。大额买单可能部分成交、部分挂单。玩家无法保证订单立即成交——如果市场上没有足够的对手盘，即使筹码充足也无法推动价格。这确保了市场的真实阻力感。</p>
+    </div>
 
     <!-- 4.3 市场仿真引擎 -->
     <h3>市场仿真引擎</h3>
-    <p>仿真引擎是游戏的"物理世界"。它维护一个限价订单簿，所有参与者（玩家AI、散户代理、其他主力代理）的订单统一进入撮合。引擎按时间序列逐笔处理订单，生成成交记录和价格更新。每根K线周期结束后，系统汇总该周期内的所有成交，生成OHLC数据。</p>
+    <p>仿真引擎是游戏的"物理世界"，也是性能优化的核心战场。它维护一个限价订单簿（交易所），所有参与者（玩家机器、散户代理、其他主力代理、做市商）的订单统一进入撮合。引擎按时间序列逐笔处理订单，生成成交记录和价格更新。每根K线周期结束后，系统汇总该周期内的所有成交，生成OHLC数据。</p>
 
     <figure class="diagram">
       <pre class="mermaid">
 flowchart TB
-    subgraph Exchange["撮合引擎"]
-        LOB["限价订单簿<br/>价格优先·时间优先"]
-    end
-    subgraph Retail["散户代理池（200-500个）"]
-        R1["追涨型<br/>涨则买"]
-        R2["杀跌型<br/>跌则卖"]
-        R3["抄底型<br/>大跌则买"]
-        R4["止损型<br/>亏则斩"]
-        R5["跟风型<br/>放量跟"]
-        R6["价值型<br/>低估买"]
-    end
-    subgraph Inst["机构代理"]
-        I1["竞争主力<br/>独立操控意图"]
-        I2["做市商<br/>提供流动性"]
+    subgraph Parallel["并行评估阶段 (ThreadPool)"]
+        direction LR
+        PA["玩家订单<br/>来自映射引擎"]
+        RA["散户代理池<br/>200-1000个·并行评估"]
+        IA["主力代理<br/>3-5个·独立决策"]
+        MA["做市商<br/>持续双边报价"]
     end
 
-    Player["玩家AI代理"] -->|订单| LOB
-    R1 -->|订单| LOB
-    R2 -->|订单| LOB
-    R3 -->|订单| LOB
-    R4 -->|订单| LOB
-    R5 -->|订单| LOB
-    R6 -->|订单| LOB
-    I1 -->|订单| LOB
-    I2 -->|订单| LOB
+    PA --> Collect["订单收集器<br/>Channel&lt;Order&gt;"]
+    RA --> Collect
+    IA --> Collect
+    MA --> Collect
 
-    LOB -->|成交·价格| Update["价格更新<br/>成交量·OHLC"]
-    Update -->|反馈| R1
-    Update -->|反馈| R2
-    Update -->|反馈| R3
-    Update -->|反馈| R4
-    Update -->|反馈| R5
-    Update -->|反馈| R6
-    Update -->|反馈| Player
+    Collect -->|"批量投递"| Match["交易所撮合引擎<br/>串行·价格优先时间优先"]
+
+    Match --> Results["成交结果<br/>Channel&lt;Trade&gt;"]
+
+    subgraph Feedback["并行反馈阶段 (ThreadPool)"]
+        direction LR
+        PF["更新玩家账户"]
+        RF["更新散户账户·状态"]
+        IF["更新主力账户·状态"]
+        MF["更新做市商报价"]
+    end
+
+    Results --> PF
+    Results --> RF
+    Results --> IF
+    Results --> MF
+
+    PF --> UI["UI刷新<br/>K线·盘口·账户面板"]
       </pre>
-      <figcaption>图 4：市场仿真引擎与参与者交互</figcaption>
+      <figcaption>图 4：并行仿真流水线 — 代理评估并行、撮合串行、反馈并行</figcaption>
     </figure>
 
+    <h4>并行流水线详解</h4>
+    <p>每个时间步（如1秒）的仿真分为三个阶段：<strong>并行评估</strong>所有代理生成订单 → <strong>串行撮合</strong>所有订单 → <strong>并行反馈</strong>成交结果更新各代理状态。串行撮合是不可避免的——订单簿的全局一致性要求同一时刻只有一个线程修改。但评估和反馈阶段可以完全并行化，这两个阶段占据了大部分计算量。</p>
+
+    <pre><code>public class ParallelScheduler
+{
+    private readonly MatchingEngine _engine;
+    private readonly List&lt;IInvestorAgent&gt; _agents;
+    private readonly Channel&lt;Order&gt; _orderChannel;
+    private readonly Channel&lt;List&lt;Trade&gt;&gt; _tradeChannel;
+
+    /// <summary>
+    /// 执行一个时间步的仿真流水线
+    /// </summary>
+    public async Task TickAsync(MarketSnapshot snapshot)
+    {
+        // 阶段1：并行评估所有代理，生成订单
+        var orders = new ConcurrentBag&lt;Order&gt;();
+        await Parallel.ForEachAsync(_agents, async (agent, ct) =>
+        {
+            var agentOrders = agent.Evaluate(snapshot);
+            foreach (var o in agentOrders)
+                orders.Add(o);
+        });
+
+        // 阶段2：串行撮合（订单簿一致性要求）
+        var trades = new List&lt;Trade&gt;();
+        foreach (var order in orders.OrderBy(o =&gt; o.Timestamp))
+        {
+            var matches = _engine.Match(order);
+            trades.AddRange(matches);
+        }
+
+        // 阶段3：并行反馈成交结果，更新各代理账户
+        var tradesByAgent = trades.GroupBy(t =&gt; t.BuyerId)
+            .Concat(trades.GroupBy(t =&gt; t.SellerId));
+        await Parallel.ForEachAsync(tradesByAgent, async (group, ct) =>
+        {
+            var agent = _agents.First(a =&gt; a.Id == group.Key);
+            agent.UpdateAccount(group.ToList());
+        });
+    }
+}</code></pre>
+
     <h4>散户代理设计</h4>
-    <p>散户代理是市场流动性的主要来源，也是玩家控盘时的主要"对手盘"。每种类型的散户有不同的行为触发条件和参数。代理数量根据标的流动性动态配置，小盘股200个左右，大盘股可达500个以上。</p>
+    <p>散户代理是市场流动性的主要来源，也是玩家控盘时的主要"对手盘"。每种类型的散户有不同的行为触发条件和参数。代理数量根据标的流动性动态配置，小盘股200个左右，大盘股可达1000个以上——代理数量是性能压力的主要来源。</p>
 
     <div class="table-wrap">
       <table>
@@ -831,10 +916,10 @@ flowchart TB
       </table>
     </div>
 
-    <p>每个散户代理维护独立的持仓状态、资金余额和心理状态。代理的行为不仅受价格触发，还受全局<strong>情绪系统</strong>影响。情绪系统维护一个-100到+100的市场情绪指数（恐惧-贪婪），当情绪极度恐惧时，杀跌型和止损型代理的触发阈值降低（更容易卖出）；当情绪极度贪婪时，追涨型代理更活跃。情绪指数随价格走势、成交量和市场事件动态变化。</p>
+    <p>每个散户代理维护独立的持仓状态、资金余额和心理状态。代理的行为不仅受价格触发，还受全局<strong>情绪系统</strong>影响。情绪系统维护一个-100到+100的市场情绪指数（恐惧-贪婪），当情绪极度恐惧时，杀跌型和止损型代理的触发阈值降低；当情绪极度贪婪时，追涨型代理更活跃。情绪指数随价格走势、成交量和市场事件动态变化。</p>
 
     <h4>其他主力代理</h4>
-    <p>其他主力代理是游戏后期的核心挑战。它们拥有独立的操控目标和策略，行为模式参考真实市场中的庄家手法：<strong>建仓</strong>（低位悄悄吸筹）→ <strong>拉升</strong>（配合消息面推高价格）→ <strong>出货</strong>（高位分批抛售）。不同性格的主力在操作节奏和隐蔽性上各有差异：</p>
+    <p>其他主力代理拥有独立的操控目标和策略，行为模式参考真实市场中的庄家手法：<strong>建仓</strong>（低位悄悄吸筹）→ <strong>拉升</strong>（配合消息面推高价格）→ <strong>出货</strong>（高位分批抛售）。不同性格的主力在操作节奏和隐蔽性上各有差异：</p>
     <ul>
       <li><strong>激进型</strong>：快速建仓、大幅拉升、高位砸盘，容易被玩家察觉但力度大</li>
       <li><strong>温和型</strong>：缓慢建仓、阶梯式拉升、分批出货，隐蔽性强但周期长</li>
@@ -866,6 +951,12 @@ flowchart TB
     public decimal ReturnRate(decimal initialCapital, decimal currentPrice) =>
         (TotalAssets(currentPrice) - initialCapital) / initialCapital;
 
+    // 筹码检查：买单前检查可用筹码
+    public bool CanBuy(decimal requiredAmount)
+    {
+        return Cash - FrozenCash &gt;= requiredAmount;
+    }
+
     // 交易成本计算
     public decimal CalculateCost(decimal amount, bool isSell)
     {
@@ -876,28 +967,79 @@ flowchart TB
     }
 }</code></pre>
 
-    <p>面板上实时显示的核心指标包括：<strong>可用筹码</strong>（当前可投入的资金）、<strong>持仓筹码</strong>（持有的股票数量）、<strong>持仓成本</strong>（加权平均买入价）、<strong>浮动盈亏</strong>（未平仓部分的盈亏）和<strong>已实现盈亏</strong>（已平仓部分的累计盈亏）。这些指标的实时变化让玩家直观感受到控盘操作的成本和收益。</p>
+    <p>面板上实时显示的核心指标包括：<strong>可用筹码</strong>（当前可投入的资金，清零则日内无法下买单）、<strong>持仓筹码</strong>（持有的股票数量）、<strong>持仓成本</strong>（加权平均买入价）、<strong>浮动盈亏</strong>（未平仓部分的盈亏）、<strong>已实现盈亏</strong>（已平仓部分的累计盈亏）和<strong>年化收益率</strong>（KPI考核的核心指标）。</p>
 
-    <!-- 4.5 交易界面 -->
+    <!-- 4.5 KPI考核系统 -->
+    <h3>KPI考核系统</h3>
+    <p>KPI系统取代了传统的评分系统，是游戏唯一的失败条件。<strong>领导设定年化收益率目标，未完成即被开除</strong>。这种设计将压力感贯穿整个游戏体验——不是某关没过可以重来，而是持续性的生存压力。</p>
+
+    <pre><code>public class KPISystem
+{
+    private readonly decimal _initialCapital;       // 初始资金
+    private DateTime _startDate;                    // 考核起始日期
+    private decimal _annualTarget;                  // 年化收益率目标
+
+    /// <summary>
+    /// 计算当前年化收益率
+    /// </summary>
+    public decimal CalculateAnnualizedReturn(decimal currentAssets, DateTime now)
+    {
+        var totalReturn = (currentAssets - _initialCapital) / _initialCapital;
+        var elapsedDays = (now - _startDate).TotalDays;
+        var annualized = totalReturn * (365m / (decimal)elapsedDays);
+        return annualized;
+    }
+
+    /// <summary>
+    /// 日终KPI检查
+    /// </summary>
+    public KPICheckResult DailyCheck(decimal currentAssets, DateTime now)
+    {
+        var annualizedReturn = CalculateAnnualizedReturn(currentAssets, now);
+        var isFired = annualizedReturn &lt; _annualTarget;
+
+        return new KPICheckResult
+        {
+            CurrentReturn = annualizedReturn,
+            Target = _annualTarget,
+            Gap = annualizedReturn - _annualTarget,
+            IsFired = isFired,
+            DaysRemaining = (int)(_startDate.AddYears(1) - now).TotalDays
+        };
+    }
+}
+
+public record KPICheckResult
+{
+    public decimal CurrentReturn { get; init; }     // 当前年化收益率
+    public decimal Target { get; init; }            // KPI目标
+    public decimal Gap { get; init; }               // 差距（正=达标，负=未达标）
+    public bool IsFired { get; init; }              // 是否被开除
+    public int DaysRemaining { get; init; }         // 距考核截止剩余天数
+}</code></pre>
+
+    <p>KPI目标随时间动态调整：游戏初期目标较低（如年化10%），随着交易日推进逐步提高（如年化30%、50%），模拟领导不断提高要求的真实职场压力。日终结算时面板醒目显示当前年化收益率与目标的差距，以及距离下次考核的剩余天数。<strong>当年化收益率持续低于目标时，玩家面临被开除的风险</strong>——这是游戏唯一的Game Over条件。</p>
+
+    <!-- 4.6 交易界面 -->
     <h3>交易界面</h3>
     <p>界面布局对标主流证券交易软件，分为四个主要区域：</p>
 
     <div class="card-grid">
       <div class="card">
         <h4>主图表区（60%）</h4>
-        <p>K线图主体，显示实际K线（红涨绿跌）和玩家绘制的目标K线（蓝色半透明叠加）。下方附成交量副图。支持MA、MACD、KDJ等技术指标叠加。主力大单买卖点在图上标注。</p>
+        <p>K线图主体，显示实际K线（红涨绿跌）和玩家绘制的目标K线（蓝色半透明叠加）。下方附成交量副图。支持MA、MACD、KDJ等技术指标叠加。大单买卖点在图上标注。</p>
       </div>
       <div class="card">
-        <h4>账户面板（右上）</h4>
-        <p>实时显示可用筹码、持仓数量、持仓成本、浮动盈亏、已实现盈亏、总资产、收益率。盈亏数字根据正负显示红绿色。</p>
+        <h4>账户与KPI面板（右上）</h4>
+        <p>实时显示可用筹码、持仓数量、持仓成本、浮动盈亏、已实现盈亏。KPI仪表盘显示年化收益率、目标值、差距和剩余天数。筹码清零时醒目红色警告。</p>
       </div>
       <div class="card">
         <h4>盘口与委托（右中）</h4>
-        <p>五档买卖盘实时刷新，显示各价位挂单量。下方为委托下单区，AI代理的自动委托在此区域以半透明形式展示，玩家可看到AI的实时操作。</p>
+        <p>五档买卖盘实时刷新，显示各价位挂单量。下方为机器自动委托的实时展示区，玩家可看到机器根据K线方向下出的买单/卖单及其成交状态。</p>
       </div>
       <div class="card">
-        <h4>状态与事件（底部）</h4>
-        <p>成交明细滚动显示，市场新闻/事件提示（如"突发利好：公司获得大订单"），游戏状态栏显示当前关卡、进度、得分和目标K线拟合度。</p>
+        <h4>成交与状态（底部）</h4>
+        <p>成交明细滚动显示，显示每笔成交的价格、数量、方向。状态栏显示当前交易日、时间进度和KPI完成度。</p>
       </div>
     </div>
   </div>
@@ -909,7 +1051,7 @@ flowchart TB
     <span class="section-num">05 / ROADMAP</span>
     <h2>开发阶段与里程碑</h2>
 
-    <p>整个项目分为五个阶段，预计26周完成。采用MVP优先策略：先实现最小可玩闭环（能画K线、AI能控盘、能看到盈亏），再逐步丰富市场仿真和AI能力，最后打磨体验和内容。</p>
+    <p>整个项目分为五个阶段，预计22周完成。采用MVP优先策略：先实现最小可玩闭环（能画K线、机器能下单、能看到盈亏和KPI），再逐步丰富市场仿真和并行优化能力，最后打磨体验并发布。由于取消了AI价格预测和关卡设计，整体周期比前一版本缩短4周。</p>
 
     <figure class="chart-figure">
       <figcaption>开发周期甘特图</figcaption>
@@ -924,43 +1066,43 @@ flowchart TB
       </div>
       <ul>
         <li>搭建解决方案结构，配置Avalonia UI + SkiaSharp项目骨架</li>
-        <li>实现基础撮合引擎（限价订单簿、价格优先时间优先撮合）</li>
+        <li>实现证券交易所撮合引擎（限价订单簿、价格优先时间优先）</li>
         <li>实现SkiaSharp K线图基础渲染（历史K线显示、缩放、滚动）</li>
         <li>搭建账户系统骨架（资金、持仓、成本的基础数据结构）</li>
-        <li>实现仿真线程与UI线程的无锁通信管道</li>
+        <li>搭建Channel&lt;T&gt;无锁通信管道（UI线程 ↔ 仿真线程）</li>
       </ul>
-      <div class="milestone">里程碑：图表上能看到K线实时更新，基础撮合引擎能处理简单买卖单</div>
+      <div class="milestone">里程碑：图表上能看到K线实时更新，交易所撮合引擎能处理简单买卖单</div>
     </div>
 
     <div class="phase">
       <div class="phase-header">
         <span class="phase-badge">P2</span>
         <span class="phase-title">核心玩法</span>
-        <span class="phase-weeks">第 5-10 周</span>
+        <span class="phase-weeks">第 5-9 周</span>
       </div>
       <ul>
         <li>实现K线绘制系统（逐根手绘 + 模板快速生成）</li>
-        <li>实现规则引擎版价格控制AI（基于价格差和成交量的线性模型）</li>
-        <li>实现市场冲击模型（基础版本）</li>
+        <li>实现订单映射引擎（画高→买单，画低→卖单，筹码检查）</li>
+        <li>实现筹码清零保护（日内无法下买单）</li>
         <li>完善账户管理系统（T+1、涨跌停、交易成本）</li>
-        <li>搭建交易UI主框架（K线图 + 账户面板 + 委托区 + 盘口）</li>
-        <li>实现目标K线与实际K线的叠加显示和偏差计算</li>
+        <li>实现KPI考核系统（年化收益率计算、日终检查、开除判定）</li>
+        <li>搭建交易UI主框架（K线图 + 账户面板 + KPI仪表盘 + 盘口 + 委托区）</li>
       </ul>
-      <div class="milestone">里程碑：能画K线、AI能控盘、面板显示盈亏变化 — 最小可玩闭环达成</div>
+      <div class="milestone">里程碑：能画K线、机器自动下单、面板显示盈亏和KPI — 最小可玩闭环达成</div>
     </div>
 
     <div class="phase">
       <div class="phase-header">
         <span class="phase-badge">P3</span>
         <span class="phase-title">市场仿真</span>
-        <span class="phase-weeks">第 11-16 周</span>
+        <span class="phase-weeks">第 10-14 周</span>
       </div>
       <ul>
         <li>实现6种散户代理（追涨、杀跌、抄底、止损、跟风、价值）</li>
         <li>实现情绪系统（恐惧-贪婪指数，影响散户行为参数）</li>
-        <li>实现市场事件系统（利好/利空新闻、板块联动、龙虎榜）</li>
         <li>实现其他主力代理（建仓-拉升-出货完整生命周期）</li>
-        <li>实现做市商代理（提供基础流动性）</li>
+        <li>实现做市商代理（持续双边报价提供流动性）</li>
+        <li>实现并行流水线（代理评估并行、撮合串行、反馈并行）</li>
         <li>校准仿真参数，使市场波动特征接近真实A股数据</li>
       </ul>
       <div class="milestone">里程碑：市场有真实的波动和参与者反应，散户追涨杀跌行为可见</div>
@@ -969,34 +1111,33 @@ flowchart TB
     <div class="phase">
       <div class="phase-header">
         <span class="phase-badge">P4</span>
-        <span class="phase-title">AI优化与平衡</span>
-        <span class="phase-weeks">第 17-22 周</span>
+        <span class="phase-title">并行优化与打磨</span>
+        <span class="phase-weeks">第 15-19 周</span>
       </div>
       <ul>
-        <li>实现MPC（模型预测控制）版价格控制AI</li>
-        <li>优化市场冲击模型，引入非线性项和成交量反馈</li>
-        <li>大规模游戏平衡测试，调整散户参数、难度曲线、容差机制</li>
-        <li>UI美化：K线图动画过渡、面板数字滚动、盈亏闪烁反馈</li>
-        <li>音效系统：下单音、成交音、涨停跌停提示音</li>
-        <li>性能优化：Agent批处理、渲染虚拟化、内存池化</li>
+        <li>大规模并行性能优化（代理批处理、对象池化、内存预分配）</li>
+        <li>目标性能：1000个代理 × 1秒K线周期，单步仿真耗时 &lt; 8ms</li>
+        <li>KPI难度曲线调优（年化目标递增节奏、考核周期）</li>
+        <li>筹码平衡性测试（初始筹码量、单笔下单上限、成本结构）</li>
+        <li>UI美化：K线图动画过渡、面板数字滚动、筹码清零闪烁警告</li>
+        <li>音效系统：下单音、成交音、涨停跌停提示音、开除音效</li>
       </ul>
-      <div class="milestone">里程碑：游戏体验流畅有挑战性，AI控盘效果良好，60fps稳定运行</div>
+      <div class="milestone">里程碑：1000个代理流畅运行，游戏体验有压力感和沉浸感，60fps稳定</div>
     </div>
 
     <div class="phase">
       <div class="phase-header">
         <span class="phase-badge">P5</span>
-        <span class="phase-title">内容与发布</span>
-        <span class="phase-weeks">第 23-26 周</span>
+        <span class="phase-title">测试与发布</span>
+        <span class="phase-weeks">第 20-22 周</span>
       </div>
       <ul>
-        <li>关卡/场景系统：10-15个关卡，从低流动性小盘股到高流动性大盘股</li>
-        <li>新手引导：交互式教程，引导玩家完成第一次控盘</li>
-        <li>可选：RL增强版价格控制AI（在Phase 3仿真环境中训练）</li>
-        <li>全面测试：单元测试覆盖、集成测试、平衡性测试</li>
+        <li>新手引导：交互式教程，引导玩家完成第一个交易日的控盘</li>
+        <li>全面测试：单元测试覆盖、集成测试、长时间运行稳定性测试</li>
+        <li>存档系统完善：支持中途保存和恢复交易日状态</li>
         <li>打包发布：Windows/macOS/Linux三平台构建</li>
       </ul>
-      <div class="milestone">里程碑：可发布版本，含完整关卡和新手引导</div>
+      <div class="milestone">里程碑：可发布版本，含新手引导和完整交易日循环</div>
     </div>
   </div>
 </section>
@@ -1007,25 +1148,25 @@ flowchart TB
     <span class="section-num">06 / CHALLENGES</span>
     <h2>技术难点与应对策略</h2>
 
-    <h3>价格控制AI的精度与成本平衡</h3>
-    <p>这是整个项目最大的技术挑战。AI需要在两个相互矛盾的目标之间找到平衡：<strong>让实际K线贴合目标轨迹</strong>（拟合度）和<strong>尽可能低买高卖实现盈利</strong>（收益）。大量买入推高价格的同时也推高了自己的建仓成本；如果想低位建仓再拉升，又会导致目标K线前段偏离。</p>
-    <p>应对策略是分阶段实现。Phase 1的规则引擎只关注拟合度，确保基本可玩；Phase 2的MPC引入成本项作为优化目标的一部分，通过权重系数平衡拟合度与收益；Phase 3的RL代理在仿真环境中训练数万局，自然学会在复杂条件下做出权衡。同时引入<strong>容差机制</strong>——玩家可以设定每根K线的容差范围，AI只需将价格控制在容差区间内，这为AI留出了低买高卖的操作空间。</p>
+    <h3>大规模并行仿真的性能优化</h3>
+    <p>这是整个项目最大的技术挑战。仿真引擎需要同时运行200-1000个散户代理和若干机构代理，每个代理在每个时间步内都要评估市场状态、做出交易决策、维护独立账户。同时UI需要60fps刷新K线图和面板数据。<strong>代理数量是性能压力的主要来源</strong>——1000个代理意味着每个时间步要并行评估1000个对象、收集数百个订单、串行撮合、再并行反馈结果。</p>
+    <p>应对策略是三管齐下：<strong>并行流水线</strong>——代理评估和结果反馈用<code>Parallel.ForEachAsync</code>并行处理，只有撮合引擎串行运行；<strong>对象池化</strong>——订单、成交记录、市场快照等高频分配的对象使用<code>ArrayPool&lt;T&gt;</code>池化，避免GC压力；<strong>数据布局优化</strong>——代理的持仓、资金等热数据使用<code>struct</code>而非<code>class</code>，以值类型存储在连续内存中，提高CPU缓存命中率。目标性能指标：1000个代理 × 1秒K线周期，单步仿真耗时 &lt; 8ms。</p>
 
     <h3>市场仿真的真实感</h3>
-    <p>如果散户行为不够真实，游戏就失去了策略深度——玩家随便买卖就能控盘，没有挑战。但过度真实又会导致市场不可控，玩家无法达成目标。关键在于找到<strong>"可操控但有阻力"</strong>的平衡点。</p>
-    <p>应对策略是参数化所有散户行为，并通过难度系统统一调控。低难度下散户感知阈值高（对价格变化不敏感）、资金量小、情绪波动弱，玩家容易控盘；高难度下散户感知敏锐、资金量大、情绪波动剧烈，玩家需要更精细的操作。参数校准参考真实A股的换手率、涨跌幅分布和散户交易行为研究数据，确保市场"质感"真实。</p>
+    <p>如果散户行为不够真实，游戏就失去了策略深度——玩家随便买卖就能推动价格，没有市场阻力。但纯仿真市场没有AI预测，价格完全由订单簿供需决定，这意味着市场走向确实不可控。关键在于找到<strong>"可影响但有阻力"</strong>的平衡点。</p>
+    <p>应对策略是参数化所有散户行为，并通过配置统一调控。散户的感知阈值、资金量、情绪敏感度都可以调整。参数校准参考真实A股的换手率、涨跌幅分布和散户交易行为研究数据。市场事件系统（利好/利空新闻）注入额外的不确定性，让市场不会过于规律。</p>
 
-    <h3>实时性能</h3>
-    <p>仿真引擎需要同时运行200-500个散户代理和若干机构代理，每个代理在每个K线周期内都要评估市场状态并可能下单。同时UI需要60fps刷新K线图和面板数据。这对CPU和渲染性能都有较高要求。</p>
-    <p>应对策略：<strong>仿真线程批处理</strong>——所有代理在同一时间步内并行评估，订单统一收集后批量投入撮合引擎，避免逐个代理串行处理；<strong>渲染虚拟化</strong>——K线图只渲染视口内可见的K线，历史数据通过数据窗口滑动加载；<strong>对象池化</strong>——订单和成交记录使用对象池复用，减少GC压力。目标性能指标：500个代理 × 1秒K线周期，单步仿真耗时 &lt; 5ms。</p>
+    <h3>筹码管理与游戏平衡</h3>
+    <p>筹码是核心资源约束，其平衡性直接影响游戏体验。初始筹码太多则毫无压力，太少则开局就弹尽粮绝。单笔下单上限太低则画线效果不明显，太高则筹码瞬间耗尽。KPI目标太高则不可能完成，太低则毫无挑战。</p>
+    <p>应对策略是将所有平衡参数集中到<strong>配置文件</strong>中，在P4阶段进行大量playtest。关键指标包括：平均存活天数（被开除前的交易日数）、筹码清零频率、KPI达标率。根据数据迭代调整初始筹码量、单笔上限、KPI目标曲线和散户参数。同时设计<strong>动态KPI调整</strong>——如果系统检测到玩家连续多日无法达标，适当降低下阶段KPI目标，避免死局。</p>
 
     <h3>K线图自定义渲染</h3>
     <p>K线图需要同时支持历史K线渲染、实时K线更新、目标K线叠加显示、交互式绘制（鼠标拖拽创建目标K线）、多时间周期切换、技术指标叠加等功能。这些需求远超通用图表库的能力。</p>
     <p>应对策略：使用SkiaSharp完全自绘K线图控件。将渲染分为<strong>背景层</strong>（网格、坐标轴）、<strong>主图层</strong>（K线、成交量、均线）、<strong>叠加层</strong>（目标K线、大单标注）、<strong>交互层</strong>（绘制中的K线预览、十字光标）四个独立的渲染层，按需重绘。交互绘制使用命中测试确定鼠标位置对应的K线索引和价格水平，实时生成预览K线。</p>
 
-    <h3>游戏平衡性</h3>
-    <p>游戏平衡是持续性的挑战。太难会让玩家挫败放弃，太简单则缺乏成就感。平衡性涉及散户参数、主力AI强度、容差机制、筹码初始量、交易成本等多个维度的耦合调优。</p>
-    <p>应对策略：将所有平衡参数集中到<strong>难度配置文件</strong>中，每个关卡对应一组参数。开发Phase 4进行大量playtest，记录玩家通关率、平均得分、重试次数等指标，根据数据迭代调整。同时设计<strong>动态难度调整</strong>机制——如果系统检测到玩家连续失败3次以上，自动微调散户感知阈值降低难度，避免卡关。</p>
+    <h3>撮合引擎的并发安全</h3>
+    <p>撮合引擎必须串行运行（订单簿全局一致性），但所有代理的订单通过Channel并发投递。需要确保订单的时间戳排序公平、撮合逻辑无竞态条件、成交结果不丢失。</p>
+    <p>应对策略：撮合引擎运行在独占线程，通过<code>Channel&lt;Order&gt;</code>接收订单（Channel本身是线程安全的）。订单进入时打上单调递增的时间戳，撮合按时间戳排序。成交结果通过<code>Channel&lt;Trade&gt;</code>输出，反馈线程池并行消费。整个流水线无锁——线程间通信完全通过Channel，不使用<code>lock</code>语句。</p>
   </div>
 </section>
 
@@ -1042,40 +1183,40 @@ flowchart TB
         </thead>
         <tbody>
           <tr>
-            <td>AI控盘效果不理想<br/><small>实际K线与目标偏差过大</small></td>
-            <td style="color:var(--yellow);">中</td>
+            <td>大规模并行性能不足<br/><small>1000个代理导致单步仿真超时</small></td>
             <td style="color:var(--accent2);">高</td>
-            <td>分阶段开发（规则→MPC→RL），引入容差机制降低精度要求，Phase 2即可达到可玩水平</td>
+            <td style="color:var(--accent2);">高</td>
+            <td>并行流水线架构、对象池化、struct值类型优化缓存命中、必要时降级到500个代理</td>
           </tr>
           <tr>
             <td>市场仿真不够真实<br/><small>散户行为机械化、可预测</small></td>
             <td style="color:var(--yellow);">中</td>
             <td style="color:var(--accent2);">高</td>
-            <td>参考真实A股数据校准参数，为每个代理引入随机性因子，持续迭代调整</td>
+            <td>参考真实A股数据校准参数，为每个代理引入随机性因子，市场事件系统注入不确定性</td>
           </tr>
           <tr>
-            <td>开发周期超期<br/><small>仿真引擎复杂度超预期</small></td>
-            <td style="color:var(--accent2);">高</td>
+            <td>筹码平衡性失调<br/><small>初始筹码/KPI目标/下单上限配比不当</small></td>
             <td style="color:var(--yellow);">中</td>
-            <td>MVP优先策略，Phase 2交付最小可玩版本后即可获取反馈，后续阶段可裁剪</td>
+            <td style="color:var(--yellow);">中</td>
+            <td>P4阶段大量playtest，记录存活天数和达标率数据，迭代调整配置参数</td>
           </tr>
           <tr>
-            <td>性能瓶颈<br/><small>大量Agent导致帧率下降</small></td>
+            <td>开发周期超期<br/><small>并行仿真引擎复杂度超预期</small></td>
+            <td style="color:var(--yellow);">中</td>
+            <td style="color:var(--yellow);">中</td>
+            <td>MVP优先策略，P2交付最小可玩版本后即可获取反馈，P3代理数量可先200后扩展</td>
+          </tr>
+          <tr>
+            <td>撮合引擎并发问题<br/><small>Channel死锁或成交丢失</small></td>
             <td style="color:var(--green);">低</td>
-            <td style="color:var(--yellow);">中</td>
-            <td>架构层面预留优化空间（批处理、池化、虚拟化），仿真与渲染线程分离</td>
+            <td style="color:var(--accent2);">高</td>
+            <td>撮合引擎独占线程、Channel无锁通信、完善的单元测试覆盖撮合边界条件</td>
           </tr>
           <tr>
             <td>UI复杂度超预期<br/><small>交易软件级UI开发量大</small></td>
             <td style="color:var(--yellow);">中</td>
             <td style="color:var(--yellow);">中</td>
-            <td>使用Avalonia成熟MVVM框架，组件化开发，优先核心面板（K线图+账户），次要功能后置</td>
-          </tr>
-          <tr>
-            <td>RL训练收敛困难<br/><small>Phase 3 RL代理效果不如MPC</small></td>
-            <td style="color:var(--yellow);">中</td>
-            <td style="color:var(--green);">低</td>
-            <td>RL为可选增强项，Phase 2的MPC版本已满足核心需求，RL不收敛不影响发布</td>
+            <td>Avalonia MVVM组件化开发，优先核心面板（K线图+账户+KPI），次要功能后置</td>
           </tr>
         </tbody>
       </table>
@@ -1083,14 +1224,14 @@ flowchart TB
 
     <div class="callout warn">
       <div class="callout-title">关键路径</div>
-      <p>项目的关键路径是 <strong>P1基础架构 → P2核心玩法 → P3市场仿真</strong>。这三个阶段构成了游戏的核心价值链。P4（AI优化与平衡）和P5（内容与发布）可以在核心可玩版本基础上并行推进或适度裁剪。如果时间紧张，P3可以只实现3-4种散户代理（追涨、杀跌、止损、抄底），其他类型后续迭代补充。RL增强项（P5）为纯可选内容，不影响游戏的基本可玩性。</p>
+      <p>项目的关键路径是 <strong>P1基础架构 → P2核心玩法 → P3市场仿真</strong>。这三个阶段构成了游戏的核心价值链。P4（并行优化与打磨）和P5（测试与发布）可以在核心可玩版本基础上推进。如果性能不达标，P3可以先实现200个代理（而非1000个），后续在P4阶段逐步扩展。关键路径上没有任何可选裁剪项——所有阶段都是游戏可玩性的必要组成部分。</p>
     </div>
   </div>
 </section>
 
 <footer>
   <div class="container">
-    <p>主力资金K线操控模拟游戏 · 开发计划 v0.1 · 2026-07-29</p>
+    <p>主力资金K线操控模拟游戏 · 开发计划 v0.2 · 2026-07-29</p>
   </div>
 </footer>
 
