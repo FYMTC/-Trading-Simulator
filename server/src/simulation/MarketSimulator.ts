@@ -23,6 +23,8 @@ import {
   AccountState,
   KPIResult,
   SystemMessage,
+  ForumPost,
+  NewsItem,
 } from '../../../shared/types';
 import { CONFIG, INSTRUMENTS, roundPrice, fmt, fmtInt, fmtPct } from '../config';
 import { OrderBook } from '../exchange/OrderBook';
@@ -81,6 +83,16 @@ export class MarketSimulator {
   /** Raised when the trading day finishes; cleared by nextDay(). */
   endOfDayReached: boolean;
 
+  // --- Pending broadcast queues (drained by WebSocketServer.broadcast) ----
+  /** News items generated during the current tick, pending broadcast. */
+  pendingNews: NewsItem[];
+  /** Forum posts generated during the current tick, pending broadcast. */
+  pendingForumPosts: ForumPost[];
+  /** Player fill notifications generated during the current tick. */
+  pendingFills: Array<{ orderId: string; fillPrice: number; fillQty: number; side: Side }>;
+  /** Whether the account state has changed since the last broadcast. */
+  accountDirty: boolean;
+
   constructor(symbol: string = 'TECH100') {
     this.symbol = symbol;
     this.instrument = INSTRUMENTS[symbol] || INSTRUMENTS.TECH100;
@@ -118,6 +130,10 @@ export class MarketSimulator {
 
     this.systemMessages = [];
     this.endOfDayReached = false;
+    this.pendingNews = [];
+    this.pendingForumPosts = [];
+    this.pendingFills = [];
+    this.accountDirty = true;
   }
 
   // ========================================================================
@@ -151,7 +167,8 @@ export class MarketSimulator {
 
     // 4. On emotion overflow, emit an emotion-driven news item.
     if (emotionResult.overflow) {
-      this.forumNews.generateEmotionNews(emotion, this.instrument.name);
+      const news = this.forumNews.generateEmotionNews(emotion, this.instrument.name);
+      if (news) this.pendingNews.push(news);
     }
 
     // 5. Sample the agent pool for retail/whale/institution orders.
@@ -186,6 +203,9 @@ export class MarketSimulator {
       this.lowToday = Math.min(this.lowToday, t.price);
       this.currentPrice = t.price;
     }
+    if (mfTrades.length > 0) {
+      this.accountDirty = true;
+    }
 
     // 8. Process the player's pending orders.
     this.processPlayerOrders();
@@ -202,27 +222,32 @@ export class MarketSimulator {
     if (this.book.limitDown > 0) this.currentPrice = Math.max(this.currentPrice, this.book.limitDown);
     this.currentPrice = roundPrice(this.currentPrice);
 
-    // 10. Check limit-up / limit-down sealing.
+    // 10. Replenish order book liquidity when it becomes thin.
+    this.book.replenish(this.currentPrice);
+
+    // 11. Check limit-up / limit-down sealing.
     this.updateLimitStatus();
 
-    // 11. Close the 5-minute candle every 5 ticks.
+    // 12. Close the 5-minute candle every 5 ticks.
     if (this.marketMinutes % 5 === 0) {
       this.klineAgg.closeCandle();
     }
 
-    // 12. Periodic forum post.
+    // 13. Periodic forum post.
     if (this.tickCount % 8 === 0) {
       const priceChange =
         this.prevClose > 0 ? (this.currentPrice - this.prevClose) / this.prevClose : 0;
-      this.forumNews.generateForumPost(this.currentPrice, priceChange, this.instrument.name);
+      const post = this.forumNews.generateForumPost(this.currentPrice, priceChange, this.instrument.name);
+      this.pendingForumPosts.push(post);
     }
 
-    // 13. Periodic news.
+    // 14. Periodic news.
     if (this.tickCount % 15 === 0) {
-      this.forumNews.generateNews(this.currentPrice, this.instrument.name);
+      const news = this.forumNews.generateNews(this.currentPrice, this.instrument.name);
+      this.pendingNews.push(news);
     }
 
-    // 14. End of trading day.
+    // 15. End of trading day.
     if (this.marketMinutes >= CONFIG.tradingHours) {
       this.endOfDay();
     }
@@ -318,6 +343,8 @@ export class MarketSimulator {
           this.highToday = Math.max(this.highToday, fill.price);
           this.lowToday = Math.min(this.lowToday, fill.price);
           this.currentPrice = fill.price;
+          this.pendingFills.push({ orderId: order.id, fillPrice: fill.price, fillQty: fill.qty, side: order.side });
+          this.accountDirty = true;
         }
         if (order.filledQty >= order.qty) {
           order.status = 'filled';
@@ -334,6 +361,8 @@ export class MarketSimulator {
           this.tradeCount++;
           this.highToday = Math.max(this.highToday, order.price);
           this.lowToday = Math.min(this.lowToday, order.price);
+          this.pendingFills.push({ orderId: order.id, fillPrice: order.price, fillQty, side: order.side });
+          this.accountDirty = true;
           if (order.filledQty >= order.qty) {
             order.status = 'filled';
           }
@@ -363,6 +392,7 @@ export class MarketSimulator {
     }
 
     const order = this.account.placeOrder(this.symbol, side, price, qty);
+    this.accountDirty = true;
     this.addSystemMessage(
       `已挂${side === 'buy' ? '买' : '卖'}单 ${fmtInt(qty)}股 @ ${fmt(price)}`,
       'success',
@@ -385,6 +415,7 @@ export class MarketSimulator {
     }
 
     this.account.cancelOrder(orderId);
+    this.accountDirty = true;
     this.addSystemMessage('委托已撤单', 'warn');
     return true;
   }
@@ -447,6 +478,10 @@ export class MarketSimulator {
     this.mainForce = new MainForce(this.account, this.book);
     this.mainForce.basePrice = this.instrument.basePrice;
     this.mainForce.clearDrawPath();
+    this.accountDirty = true;
+    this.pendingNews = [];
+    this.pendingForumPosts = [];
+    this.pendingFills = [];
   }
 
   /**
@@ -511,6 +546,7 @@ export class MarketSimulator {
 
     // T+1 settlement: yesterday's buys become available.
     this.account.settleT1();
+    this.accountDirty = true;
 
     // Re-seed the order book around the new price and reset limits.
     this.book.bids.clear();
@@ -556,6 +592,10 @@ export class MarketSimulator {
     this.avgVolume = 0;
     this.dailyCandles = [];
     this.systemMessages = [];
+    this.pendingNews = [];
+    this.pendingForumPosts = [];
+    this.pendingFills = [];
+    this.accountDirty = true;
   }
 
   // ========================================================================
@@ -697,6 +737,49 @@ export class MarketSimulator {
     const msgs = this.systemMessages;
     this.systemMessages = [];
     return msgs;
+  }
+
+  /** Drain pending news items (generated during the current tick). */
+  drainPendingNews(): NewsItem[] {
+    const items = this.pendingNews;
+    this.pendingNews = [];
+    return items;
+  }
+
+  /** Drain pending forum posts (generated during the current tick). */
+  drainPendingForumPosts(): ForumPost[] {
+    const items = this.pendingForumPosts;
+    this.pendingForumPosts = [];
+    return items;
+  }
+
+  /** Drain pending player fill notifications. */
+  drainPendingFills(): Array<{ orderId: string; fillPrice: number; fillQty: number; side: Side }> {
+    const items = this.pendingFills;
+    this.pendingFills = [];
+    return items;
+  }
+
+  /** Return the account state if it has changed since the last broadcast, or null. */
+  drainAccountState(): AccountState | null {
+    if (!this.accountDirty) return null;
+    this.accountDirty = false;
+    return this.getAccountState();
+  }
+
+  /** The candle currently being formed (for real-time kline_update broadcasts). */
+  getCurrentCandle(): Candle | null {
+    return this.klineAgg.getCurrent();
+  }
+
+  /** All forum posts (for init data). */
+  getForumPosts(): ForumPost[] {
+    return this.forumNews.forumPosts;
+  }
+
+  /** All news items (for init data). */
+  getNewsItems(): NewsItem[] {
+    return this.forumNews.newsItems;
   }
 
   // ========================================================================

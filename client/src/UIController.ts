@@ -616,10 +616,16 @@ export class UIController {
     // 价差行
     const bestAsk = asks.length ? asks[0].price : 0;
     const bestBid = bids.length ? bids[0].price : 0;
-    const spread = bestAsk - bestBid;
-    const spreadPct = bestBid > 0 ? (spread / bestBid) * 100 : 0;
+    let spreadText: string;
+    if (bestAsk > 0 && bestBid > 0) {
+      const spread = bestAsk - bestBid;
+      const spreadPct = (spread / bestBid) * 100;
+      spreadText = `差价 ${fmtPrice(spread)}　${spreadPct.toFixed(2)}%`;
+    } else {
+      spreadText = '差价 —';
+    }
     parts.push(
-      `<div class="ob-spread">差价 ${fmtPrice(spread)}　${spreadPct.toFixed(2)}%</div>`,
+      `<div class="ob-spread">${spreadText}</div>`,
     );
 
     // 买盘: 最优买一在上, 依次向下

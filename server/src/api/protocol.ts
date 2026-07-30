@@ -4,6 +4,8 @@ import {
   AccountState,
   Candle,
   KPIResult,
+  ForumPost,
+  NewsItem,
 } from '../../../shared/types';
 
 // ============================================================
@@ -18,6 +20,8 @@ export type ServerMessageType =
   | 'fill'               // 成交回报
   | 'account_update'     // 账户更新
   | 'news'               // 新闻推送
+  | 'forum'              // 论坛帖子推送
+  | 'kpi'                // KPI 更新
   | 'system'             // 系统消息
   | 'init';              // 初始化数据
 
@@ -40,6 +44,8 @@ export interface InitData {
   klines: Candle[];
   dailyCandles: Candle[];
   kpi: KPIResult & { dayCount: number; target: number };
+  forumPosts: ForumPost[];
+  newsItems: NewsItem[];
   config: {
     initialCash: number;
     initialAmmo: number;

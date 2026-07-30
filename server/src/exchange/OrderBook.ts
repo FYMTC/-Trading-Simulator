@@ -277,6 +277,39 @@ export class OrderBook {
     this.lastPrice = basePrice;
   }
 
+  /**
+   * Replenish liquidity when the book becomes thin.
+   * If either side has fewer than `minLevels` price levels, add seed-style
+   * orders around `centerPrice` until the threshold is met. Existing levels
+   * are not modified — only missing price points are filled in.
+   */
+  replenish(centerPrice: number, minLevels = 8): void {
+    // --- Replenish asks ---
+    while (this.asks.size < minLevels) {
+      const askPrices = [...this.asks.keys()].sort((a, b) => a - b);
+      // Next ask price: 2 ticks above the current best ask (or above centerPrice)
+      const ref = askPrices.length > 0 ? askPrices[askPrices.length - 1] : centerPrice;
+      const askPrice = roundPrice(ref + CONFIG.priceTick * 2);
+      const level = this.asks.size + 1;
+      const depthFactor = Math.max(0.2, 1 - level * 0.05);
+      const askQty = Math.floor((50 + Math.random() * 250) * depthFactor) * CONFIG.lotSize;
+      this.asks.set(askPrice, [{ qty: askQty, ts: Date.now(), id: ++this.orderIdCounter, owner: 'seed' }]);
+    }
+
+    // --- Replenish bids ---
+    while (this.bids.size < minLevels) {
+      const bidPrices = [...this.bids.keys()].sort((a, b) => b - a);
+      // Next bid price: 2 ticks below the current lowest bid (or below centerPrice)
+      const ref = bidPrices.length > 0 ? bidPrices[bidPrices.length - 1] : centerPrice;
+      const bidPrice = roundPrice(ref - CONFIG.priceTick * 2);
+      if (bidPrice <= 0) break;
+      const level = this.bids.size + 1;
+      const depthFactor = Math.max(0.2, 1 - level * 0.05);
+      const bidQty = Math.floor((50 + Math.random() * 250) * depthFactor) * CONFIG.lotSize;
+      this.bids.set(bidPrice, [{ qty: bidQty, ts: Date.now(), id: ++this.orderIdCounter, owner: 'seed' }]);
+    }
+  }
+
   /** Remove every resting order belonging to a specific owner. */
   clearOwnerOrders(owner: string): void {
     for (const [price, level] of this.bids) {

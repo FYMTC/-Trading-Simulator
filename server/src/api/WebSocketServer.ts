@@ -18,6 +18,7 @@ import {
   AccountState,
   Candle,
   NewsItem,
+  ForumPost,
   Side,
   Instrument,
   Order,
@@ -65,6 +66,13 @@ interface MarketSimulator {
   getKPIResult(): KPIResult;
   getSystemMessages(): SystemMessage[];
   getKlines(period: string, count: number): Candle[];
+  drainPendingNews(): NewsItem[];
+  drainPendingForumPosts(): ForumPost[];
+  drainPendingFills(): Array<{ orderId: string; fillPrice: number; fillQty: number; side: Side }>;
+  drainAccountState(): AccountState | null;
+  getCurrentCandle(): Candle | null;
+  getForumPosts(): ForumPost[];
+  getNewsItems(): NewsItem[];
 }
 
 export class WebSocketServer {
@@ -203,6 +211,8 @@ export class WebSocketServer {
       klines: this.sim.getKlines(this.sim.chartTimeframe, CONFIG.maxCandles),
       dailyCandles: this.sim.dailyCandles,
       kpi,
+      forumPosts: this.sim.getForumPosts(),
+      newsItems: this.sim.getNewsItems(),
       config: {
         initialCash: CONFIG.initialCash,
         initialAmmo: CONFIG.initialAmmo,
@@ -216,13 +226,52 @@ export class WebSocketServer {
     this.sendToClient(ws, createMessage('init', init, this.nextSeq()));
   }
 
-  /** 每 tick 调用: 广播行情快照 / 系统消息 / 交易日结束通知 */
+  /** 每 tick 调用: 广播行情快照 / K线 / 账户 / 新闻 / 论坛 / KPI / 成交 / 系统消息 */
   broadcast(): void {
     // 1. 行情快照 (每次)
     const snapshot = this.sim.getSnapshot();
     this.broadcastRaw('market_snapshot', snapshot);
 
-    // 2. 系统消息 (getSystemMessages 会排空队列, 不会重复推送)
+    // 2. K线更新 (当前正在形成的蜡烛)
+    const currentCandle = this.sim.getCurrentCandle();
+    if (currentCandle) {
+      this.broadcastRaw('kline_update', currentCandle);
+    }
+
+    // 3. 账户更新 (仅当账户状态有变更时)
+    const account = this.sim.drainAccountState();
+    if (account) {
+      this.broadcastRaw('account_update', account);
+    }
+
+    // 4. 成交回报
+    const fills = this.sim.drainPendingFills();
+    for (const fill of fills) {
+      this.broadcastRaw('fill', fill);
+    }
+
+    // 5. 新闻推送
+    const newsItems = this.sim.drainPendingNews();
+    for (const news of newsItems) {
+      this.broadcastRaw('news', news);
+    }
+
+    // 6. 论坛帖子推送
+    const forumPosts = this.sim.drainPendingForumPosts();
+    for (const post of forumPosts) {
+      this.broadcastRaw('forum', post);
+    }
+
+    // 7. KPI 更新 (每次 tick 都推送, 客户端据此刷新 KPI 面板)
+    const kpiResult = this.sim.getKPIResult();
+    const kpiData = {
+      ...kpiResult,
+      dayCount: this.sim.kpi.dayCount,
+      target: this.sim.kpi.target,
+    };
+    this.broadcastRaw('kpi', kpiData);
+
+    // 8. 系统消息 (getSystemMessages 会排空队列, 不会重复推送)
     const messages = this.sim.getSystemMessages();
     if (messages && messages.length > 0) {
       for (const m of messages) {
@@ -230,7 +279,7 @@ export class WebSocketServer {
       }
     }
 
-    // 3. 交易日结束时推送 "交易日结束"
+    // 9. 交易日结束时推送 "交易日结束"
     if (this.sim.endOfDayReached && !this.endOfDayNotified) {
       const endOfDayMsg: SystemMessage = { message: '交易日结束', level: 'info' };
       this.broadcastRaw('system', endOfDayMsg);

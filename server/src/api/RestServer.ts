@@ -19,6 +19,8 @@ import {
   KPIResult,
   SystemMessage,
   MarketSnapshot,
+  NewsItem,
+  ForumPost,
 } from '../../../shared/types';
 
 /**
@@ -58,6 +60,13 @@ interface MarketSimulator {
   getKPIResult(): KPIResult;
   getSystemMessages(): SystemMessage[];
   getKlines(period: string, count: number): Candle[];
+  drainPendingNews(): NewsItem[];
+  drainPendingForumPosts(): ForumPost[];
+  drainPendingFills(): Array<{ orderId: string; fillPrice: number; fillQty: number; side: Side }>;
+  drainAccountState(): AccountState | null;
+  getCurrentCandle(): Candle | null;
+  getForumPosts(): ForumPost[];
+  getNewsItems(): NewsItem[];
 }
 
 export class RestServer {

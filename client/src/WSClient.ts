@@ -33,9 +33,14 @@ export class WSClient {
   private isConnected = false;
 
   constructor(url?: string) {
-    // Default: use the Vite proxy at /ws, or direct ws://localhost:8080
-    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    this.url = url || `${proto}//${location.hostname}:8080`;
+    // Use the Vite proxy at /ws by default (proxied to ws://localhost:8080).
+    // Fall back to direct ws://hostname:8080 if an explicit URL is given.
+    if (url) {
+      this.url = url;
+    } else {
+      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      this.url = `${proto}//${location.host}/ws`;
+    }
   }
 
   /** Connect to the WebSocket server. */

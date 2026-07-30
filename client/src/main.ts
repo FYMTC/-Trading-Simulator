@@ -22,6 +22,7 @@ import type {
   NewsItem,
   SystemMessage,
   ForumPost,
+  KPIResult,
 } from './types';
 import type { KPIData } from './UIController';
 
@@ -106,9 +107,20 @@ ws.on('init', (data: InitData) => {
   // Set chart candles
   chart.setCandles(data.klines, true);
 
-  // If we have daily candles and timeframe is day/week/month, update chart
-  if (dailyCandles.length > 0) {
-    // Chart already has klines from init; user can switch timeframe later
+  // Populate forum posts (newest first — server stores them unshifted)
+  if (data.forumPosts) {
+    const sorted = [...data.forumPosts].sort((a, b) => b.time - a.time);
+    for (const post of sorted) {
+      ui.addForumPost(post);
+    }
+  }
+
+  // Populate news items (newest first)
+  if (data.newsItems) {
+    const sorted = [...data.newsItems].sort((a, b) => b.time - a.time);
+    for (const news of sorted) {
+      ui.addNews(news);
+    }
   }
 });
 
@@ -150,6 +162,16 @@ ws.on('news', (news: NewsItem) => {
 // System messages (toasts)
 ws.on('system', (msg: SystemMessage) => {
   ui.showToast(msg.message, msg.level);
+});
+
+// Forum post
+ws.on('forum', (post: ForumPost) => {
+  ui.addForumPost(post);
+});
+
+// KPI update
+ws.on('kpi', (kpi: KPIResult & { dayCount: number; target: number }) => {
+  ui.updateKPI(kpi as KPIData);
 });
 
 // ============================================================

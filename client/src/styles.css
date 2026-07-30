@@ -34,7 +34,7 @@ html, body {
 /* ==================== App Grid ==================== */
 #app {
   display: grid;
-  grid-template-rows: 40px 1fr 200px;
+  grid-template-rows: 40px 1fr 180px;
   height: 100vh;
 }
 
@@ -240,9 +240,21 @@ html, body {
   flex-shrink: 0;
 }
 
+/* Account overview: can shrink when space is tight */
+#sec-account {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Order entry: must stay fully visible */
+#sec-order {
+  flex: 0 0 auto;
+}
+
 .rp-section.rp-flex {
   flex: 1 1 0;
-  min-height: 0;
+  min-height: 100px;
   display: flex;
   flex-direction: column;
 }
@@ -253,7 +265,7 @@ html, body {
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  padding: 6px 10px 4px;
+  padding: 4px 10px 3px;
   border-bottom: 1px solid var(--rule);
 }
 
@@ -270,7 +282,7 @@ html, body {
   display: flex;
   flex-direction: column;
   background: var(--bg);
-  padding: 4px 8px;
+  padding: 3px 8px;
 }
 
 .acc-label {
@@ -289,10 +301,10 @@ html, body {
 
 /* Order form */
 .order-form {
-  padding: 8px 10px;
+  padding: 6px 10px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .form-row {
